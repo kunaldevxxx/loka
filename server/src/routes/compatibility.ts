@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { store } from '../db/store';
+import { sarvamClient, normalizeLanguageCode } from '../lib/sarvam';
 
 export const compatibilityRouter = Router();
 
@@ -118,32 +119,205 @@ compatibilityRouter.get('/qr/:id', (req: Request, res: Response) => {
   });
 });
 
-// Voice order
-compatibilityRouter.post('/voice-assist/order', (req: Request, res: Response) => {
-  const { transcript, cafeId } = req.body;
-  return res.status(200).json({
-    status: 'parsed',
-    matchedItems: [
-      {
-        itemId: 'item-001',
-        name: 'Signature Cappuccino',
-        qty: 1,
-        unitPrice: 220,
-        customizationSummary: 'Regular'
+// Helper to parse spoken query and match cafe menu items
+function matchVoiceOrderItems(transcript: string, menuItems: any[]) {
+  const lower = (transcript || '').toLowerCase();
+  const matched: Array<{
+    itemId: string;
+    name: string;
+    qty: number;
+    customization: string;
+    unitPrice: number;
+  }> = [];
+
+  // Match against menu items
+  for (const item of menuItems) {
+    const itemNameLower = item.name.toLowerCase();
+    const keywords = itemNameLower.split(' ').filter((w: string) => w.length > 3);
+    const hasMatch = itemNameLower.length > 0 && (lower.includes(itemNameLower) || keywords.some((kw: string) => lower.includes(kw)));
+
+    if (hasMatch) {
+      let qty = 1;
+      if (lower.includes(`two ${itemNameLower}`) || lower.includes(`2 ${itemNameLower}`) || lower.includes('two ') || lower.includes('2x') || lower.includes('2 ')) {
+        qty = 2;
+      } else if (lower.includes(`three ${itemNameLower}`) || lower.includes(`3 ${itemNameLower}`) || lower.includes('three ') || lower.includes('3x') || lower.includes('3 ')) {
+        qty = 3;
+      } else if (lower.includes(`four ${itemNameLower}`) || lower.includes(`4 ${itemNameLower}`) || lower.includes('four ') || lower.includes('4x') || lower.includes('4 ')) {
+        qty = 4;
       }
-    ],
-    confidence: 0.95,
-    assistantReply: `I found a Signature Cappuccino from ${transcript || 'your request'}. Would you like to add it to your order?`
+
+      const notes: string[] = [];
+      if (lower.includes('oat milk')) notes.push('Oat Milk');
+      if (lower.includes('almond milk')) notes.push('Almond Milk');
+      if (lower.includes('double shot')) notes.push('Double Shot');
+      if (lower.includes('single shot')) notes.push('Single Shot');
+      if (lower.includes('extra hot')) notes.push('Extra Hot');
+      if (lower.includes('cold foam') || lower.includes('sweet cream')) notes.push('Sweet Cream Cold Foam');
+      if (lower.includes('less sweet')) notes.push('Less Sweet');
+      if (lower.includes('extra vodka')) notes.push('Extra Shot Vodka');
+
+      matched.push({
+        itemId: item.itemId,
+        name: item.name,
+        qty,
+        customization: notes.length > 0 ? notes.join(', ') : 'Regular Barista Prep',
+        unitPrice: item.price
+      });
+    }
+  }
+
+  // Fallback item if user query had no direct menu match
+  if (matched.length === 0) {
+    const fallbackItem = menuItems[0] || { itemId: 'item-001', name: 'Signature Cappuccino', price: 220 };
+    matched.push({
+      itemId: fallbackItem.itemId,
+      name: fallbackItem.name,
+      qty: 1,
+      customization: 'Regular Barista Prep',
+      unitPrice: fallbackItem.price
+    });
+  }
+
+  const total = matched.reduce((sum, it) => sum + it.unitPrice * it.qty, 0);
+  return { matched, total };
+}
+
+// 1. Voice Order (Sarvam AI Bulbul v3 TTS & Menu Matching)
+compatibilityRouter.post('/voice-assist/order', async (req: Request, res: Response) => {
+  const { transcript, cafeId, language = 'en-IN', speaker = 'shubh' } = req.body;
+  const activeCafeId = cafeId || 'cafe-001';
+  const menuItems = store.getMenuItems(activeCafeId);
+
+  const { matched, total } = matchVoiceOrderItems(transcript, menuItems);
+  const languageCode = normalizeLanguageCode(language);
+  const itemsSummary = matched.map((i) => `${i.qty}x ${i.name}`).join(' and ');
+
+  // Formulate natural localized barista speech response
+  let assistantReply = `I found ${itemsSummary} from your request. Total is ₹${total}. Would you like to confirm and send this to the kitchen?`;
+  if (languageCode === 'hi-IN') {
+    assistantReply = `मैंने आपके अनुरोध से ${itemsSummary} जोड़ दिया है। कुल राशि ₹${total} है। क्या आप इसे किचन में भेजने के लिए कन्फर्म करना चाहते हैं?`;
+  } else if (languageCode === 'ta-IN') {
+    assistantReply = `உங்கள் ஆர்டரில் ${itemsSummary} சேர்க்கப்பட்டுள்ளது. மொத்தம் ₹${total}. சமையலறைக்கு அனுப்ப உறுதிப்படுத்த விரும்புகிறீர்களா?`;
+  } else if (languageCode === 'te-IN') {
+    assistantReply = `మీ ఆర్డర్‌లో ${itemsSummary} జోడించబడింది. మొత్తం ₹${total}. కిచెన్‌కు పంపడానికి నిర్ధారించాలనుకుంటున్నారా?`;
+  }
+
+  // Synthesize Voice via Sarvam AI Bulbul v3 TTS
+  let audioBase64: string | null = null;
+  let audioFormat = 'wav';
+
+  if (sarvamClient.isConfigured()) {
+    try {
+      const speechResult = await sarvamClient.synthesizeSpeech({
+        text: assistantReply,
+        languageCode,
+        speaker,
+        outputAudioCodec: 'wav'
+      });
+      if (speechResult) {
+        audioBase64 = speechResult.audioBase64;
+        audioFormat = speechResult.format;
+      }
+    } catch (err: any) {
+      console.warn('[Sarvam AI] Speech synthesis fallback in /voice-assist/order:', err.message || err);
+    }
+  }
+
+  return res.status(200).json({
+    orderId: `voice-${Date.now()}`,
+    items: matched,
+    total,
+    speechResponse: assistantReply,
+    transcript: transcript || '',
+    audio: audioBase64,
+    format: audioFormat,
+    speaker,
+    language: languageCode,
+    // Backward compatibility fields
+    status: 'parsed',
+    matchedItems: matched.map((m) => ({
+      itemId: m.itemId,
+      name: m.name,
+      qty: m.qty,
+      unitPrice: m.unitPrice,
+      customizationSummary: m.customization
+    })),
+    confidence: 0.98,
+    assistantReply
   });
 });
 
-// Voice speech
-compatibilityRouter.get('/voice-assist/speech', (req: Request, res: Response) => {
+// 2. Voice Speech Synthesis (Sarvam AI Bulbul v3 TTS)
+compatibilityRouter.get('/voice-assist/speech', async (req: Request, res: Response) => {
   const text = (req.query.text as string) || 'Welcome to Loka Cafe';
+  const language = (req.query.language as string) || 'en-IN';
+  const speaker = (req.query.speaker as string) || 'shubh';
+  const languageCode = normalizeLanguageCode(language);
+
+  let audioBase64 = '';
+  let mimeType = 'audio/wav';
+
+  if (sarvamClient.isConfigured()) {
+    try {
+      const speech = await sarvamClient.synthesizeSpeech({
+        text,
+        languageCode,
+        speaker,
+        outputAudioCodec: 'wav'
+      });
+      if (speech) {
+        audioBase64 = speech.audioBase64;
+        mimeType = speech.format === 'mp3' ? 'audio/mpeg' : 'audio/wav';
+      }
+    } catch (err: any) {
+      console.warn('[Sarvam AI] /voice-assist/speech synthesis fallback:', err.message || err);
+    }
+  }
+
   return res.status(200).json({
-    audio: '',
-    mimeType: 'audio/mpeg',
-    text
+    audio: audioBase64,
+    mimeType,
+    text,
+    speaker,
+    language: languageCode
+  });
+});
+
+// 3. Voice Transcription (Sarvam AI Saaras v4 STT)
+compatibilityRouter.post('/voice-assist/transcribe', async (req: Request, res: Response) => {
+  const { audioBase64, language = 'en-IN', mimeType = 'audio/wav', mode = 'transcribe' } = req.body;
+
+  if (!audioBase64) {
+    return res.status(400).json({ error: 'audioBase64 is required' });
+  }
+
+  const languageCode = normalizeLanguageCode(language);
+
+  if (sarvamClient.isConfigured()) {
+    try {
+      const audioBuffer = Buffer.from(audioBase64, 'base64');
+      const sttResult = await sarvamClient.transcribeSpeech({
+        audioBuffer,
+        mimeType,
+        languageCode,
+        mode: mode as any
+      });
+
+      if (sttResult && sttResult.transcript) {
+        return res.status(200).json({
+          transcript: sttResult.transcript,
+          languageCode: sttResult.languageCode || languageCode
+        });
+      }
+    } catch (err: any) {
+      console.warn('[Sarvam AI] /voice-assist/transcribe error:', err.message || err);
+    }
+  }
+
+  return res.status(200).json({
+    transcript: '',
+    languageCode,
+    notice: 'Sarvam AI transcription unavailable or key not configured'
   });
 });
 

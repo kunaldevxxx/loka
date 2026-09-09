@@ -15,7 +15,9 @@ import {
   SessionResponse,
   StaffOverviewResponse,
   User,
-  VoiceOrderResponse
+  VoiceOrderResponse,
+  VoiceSpeechResponse,
+  VoiceTranscribeResponse
 } from '../types/api';
 
 const RAW_BASE_URL = (((import.meta as any).env?.VITE_API_BASE_URL as string) || '').replace(/\/+$/, '');
@@ -167,15 +169,52 @@ export const api = {
       method: 'DELETE'
     }),
 
-  // Voice Assistant
-  processVoiceOrder: (data: { cafeId: string; deviceId: string; language?: string; transcript?: string }) =>
+  // Voice Assistant (Powered by Sarvam AI)
+  processVoiceOrder: (data: {
+    cafeId: string;
+    deviceId: string;
+    language?: string;
+    transcript?: string;
+    speaker?: string;
+  }) =>
     request<VoiceOrderResponse>('/api/voice-assist/order', {
       method: 'POST',
       body: JSON.stringify(data)
     }),
 
-  getVoiceSpeech: (text: string, language: string = 'en') =>
-    request<{ audio: string; mimeType: string; text: string }>(`/api/voice-assist/speech?text=${encodeURIComponent(text)}&language=${encodeURIComponent(language)}`),
+  getVoiceSpeech: (text: string, language: string = 'en-IN', speaker: string = 'shubh') =>
+    request<VoiceSpeechResponse>(
+      `/api/voice-assist/speech?text=${encodeURIComponent(text)}&language=${encodeURIComponent(language)}&speaker=${encodeURIComponent(speaker)}`
+    ),
+
+  transcribeAudio: (audioBase64: string, language: string = 'en-IN') =>
+    request<VoiceTranscribeResponse>('/api/voice-assist/transcribe', {
+      method: 'POST',
+      body: JSON.stringify({ audioBase64, language })
+    }),
+
+  assistVoiceQuery: (data: {
+    message: string;
+    cafe?: any;
+    conversationHistory?: any[];
+    menuItems?: any[];
+    sessionId?: string;
+    language?: string;
+    speaker?: string;
+  }) =>
+    request<{
+      response: string;
+      audio: string | null;
+      audioFormat: string;
+      speaker: string;
+      language: string;
+      intent: string;
+      recommendations: any[];
+      sessionId: string;
+    }>('/api/voice-assist', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
 
   // QR Code
   generateQR: (cafeId: string, tableId: string) =>

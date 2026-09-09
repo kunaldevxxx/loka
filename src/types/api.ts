@@ -299,4 +299,23 @@ export interface VoiceOrderResponse {
   total: number;
   speechResponse: string;
   transcript?: string;
+  audio?: string | null;
+  format?: string;
+  speaker?: string;
+  language?: string;
 }
+
+export interface VoiceSpeechResponse {
+  audio: string;
+  mimeType: string;
+  text: string;
+  speaker?: string;
+  language?: string;
+}
+
+export interface VoiceTranscribeResponse {
+  transcript: string;
+  languageCode?: string;
+  notice?: string;
+}
+

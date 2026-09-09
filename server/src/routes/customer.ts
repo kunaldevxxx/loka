@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { store } from '../db/store';
 import { calculatePricing } from '../lib/pricing.js';
 import crypto from 'crypto';
-import { GoogleGenAI } from '@google/genai';
+import { sarvamClient, normalizeLanguageCode } from '../lib/sarvam';
 
 export const customerRouter = Router();
 
@@ -531,47 +531,55 @@ customerRouter.post('/complaints', (req: Request, res: Response) => {
   return res.status(201).json({ complaintId: complaint.complaintId });
 });
 
-// 15. Voice Assist (Gemini Powered or Natural Fallback)
+// 15. Voice Assist (Sarvam AI Powered: Bulbul v3 TTS & Sarvam-105B Chat)
 customerRouter.post('/voice-assist', async (req: Request, res: Response) => {
-  const { message, cafe, conversationHistory, menuItems, sessionId } = req.body;
+  const { message, cafe, conversationHistory, menuItems, sessionId, language = 'en-IN', speaker = 'shubh' } = req.body;
 
   if (!message) {
     return res.status(400).json({ error: 'Message is required' });
   }
 
   const activeSessionId = sessionId || `voice-${Date.now()}`;
-  const apiKey = process.env.GEMINI_API_KEY;
+  const languageCode = normalizeLanguageCode(language);
 
   let responseText = "I'd love to help you with that! Would you like to explore our signature cappuccino or artisanal pastries?";
   let recommendations: any[] = [];
   let intent = 'inquiry';
 
-  if (apiKey) {
+  // Sarvam-105B Conversational completion
+  if (sarvamClient.isConfigured()) {
     try {
-      const ai = new GoogleGenAI({ apiKey });
-      const prompt = `You are a warm, courteous digital barista for ${cafe?.name || 'Loka Cafe'}.
-User says: "${message}"
-Menu highlights: ${Array.isArray(menuItems) ? menuItems.slice(0, 8).map((m: any) => `${m.name} (₹${m.price})`).join(', ') : 'Signature Cappuccino, Avocado Tartine, Basque Cheesecake'}
+      const systemPrompt = `You are a warm, courteous digital barista for ${cafe?.name || 'Loka Cafe'}.
+Menu highlights: ${Array.isArray(menuItems) ? menuItems.slice(0, 8).map((m: any) => `${m.name} (₹${m.price})`).join(', ') : 'Signature Cappuccino (₹220), Avocado Tartine (₹280), Basque Cheesecake (₹240)'}
 Instructions:
-- Keep answers concise, natural, and friendly (under 40 words).
-- If they want to order or ask for recommendation, give 1-2 specific suggestions.
-- Respond in plain text.`;
+- Keep answers concise, natural, and friendly (under 35 words).
+- If the customer asks for a recommendation or order, suggest 1-2 specific menu items with prices.
+- Respond in plain text suitable for speech synthesis.`;
 
-      const aiResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt
+      const aiReply = await sarvamClient.generateChatCompletion({
+        model: 'sarvam-105b-conversations',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...(Array.isArray(conversationHistory)
+            ? conversationHistory.slice(-4).map((h: any) => ({
+                role: h.role === 'assistant' ? ('assistant' as const) : ('user' as const),
+                content: String(h.content || h.message || '')
+              }))
+            : []),
+          { role: 'user', content: message }
+        ]
       });
 
-      if (aiResponse.text) {
-        responseText = aiResponse.text.trim();
+      if (aiReply) {
+        responseText = aiReply;
         intent = 'recommendation';
       }
-    } catch {
-      // Graceful fallback if Gemini quota is reached
+    } catch (err: any) {
+      console.warn('[Sarvam AI] Barista chat completion fallback:', err.message || err);
     }
   }
 
-  // If user mentioned coffee, croissant, sweet etc.
+  // Detect simple coffee/food intent if rule matches
   const lower = message.toLowerCase();
   if (lower.includes('coffee') || lower.includes('latte') || lower.includes('cappuccino')) {
     intent = 'order_coffee';
@@ -579,9 +587,33 @@ Instructions:
     intent = 'order_food';
   }
 
+  // Synthesize voice using Sarvam AI Bulbul v3
+  let audioBase64: string | null = null;
+  let audioFormat = 'wav';
+
+  if (sarvamClient.isConfigured()) {
+    try {
+      const speechResult = await sarvamClient.synthesizeSpeech({
+        text: responseText,
+        languageCode,
+        speaker,
+        outputAudioCodec: 'wav'
+      });
+      if (speechResult) {
+        audioBase64 = speechResult.audioBase64;
+        audioFormat = speechResult.format;
+      }
+    } catch (err: any) {
+      console.warn('[Sarvam AI] Bulbul v3 TTS synthesis fallback:', err.message || err);
+    }
+  }
+
   return res.status(200).json({
     response: responseText,
-    audio: null, // MP3 base64 only when ElevenLabs is configured
+    audio: audioBase64,
+    audioFormat,
+    speaker,
+    language: languageCode,
     intent,
     recommendations,
     sessionId: activeSessionId

@@ -1,9 +1,10 @@
+import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { app } from './server/src/app';
 
-const PORT = 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3001;
 
 async function startServer() {
   // Vite middleware for development; static dist serving for production
