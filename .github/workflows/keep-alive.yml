@@ -1,0 +1,23 @@
+name: Render Backend Keep-Alive (Zero Cold Start)
+
+on:
+  schedule:
+    # Run every 12 minutes to keep Render Free tier awake (Render sleeps after 15 min inactivity)
+    - cron: '*/12 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Backend Health Endpoint
+        run: |
+          TARGET_URL="${{ secrets.RENDER_BACKEND_URL }}"
+          if [ -z "$TARGET_URL" ]; then
+            echo "RENDER_BACKEND_URL secret is not set yet. Skipping ping."
+            echo "To enable 24/7 zero-sleep Render pings, add RENDER_BACKEND_URL in GitHub repo Settings -> Secrets."
+            exit 0
+          fi
+          echo "Pinging ${TARGET_URL}/health ..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${TARGET_URL%/}/health" || echo "failed")
+          echo "Response HTTP Status: ${STATUS}"
