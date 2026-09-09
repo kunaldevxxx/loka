@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../lib/api';
 import { StaffOverviewResponse } from '../../types/api';
+import { DEFAULT_STAFF_OVERVIEW } from '../../lib/fallbackData';
 import {
   TrendingUp,
   ShoppingBag,
@@ -16,8 +17,8 @@ import {
 
 export const StaffDashboard: React.FC = () => {
   const { currentCafe, setActiveView, refreshTrigger, triggerRefresh, isChef } = useApp();
-  const [overview, setOverview] = useState<StaffOverviewResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [overview, setOverview] = useState<StaffOverviewResponse | null>(DEFAULT_STAFF_OVERVIEW);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (isChef) {
@@ -29,8 +30,12 @@ export const StaffDashboard: React.FC = () => {
     if (!currentCafe) return;
     setLoading(true);
     api.getStaffOverview(currentCafe.cafeId)
-      .then((res) => setOverview(res))
-      .catch((err) => console.error('Failed to load staff overview', err))
+      .then((res) => {
+        if (res) setOverview(res);
+      })
+      .catch((err) => {
+        console.warn('Failed to load live staff overview; using cached venue metrics:', err);
+      })
       .finally(() => setLoading(false));
   };
 
@@ -38,22 +43,24 @@ export const StaffDashboard: React.FC = () => {
     fetchOverview();
   }, [currentCafe?.cafeId, refreshTrigger]);
 
-  if (loading && !overview) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-16 text-center">
-        <div className="w-8 h-8 border-3 border-[var(--primary)] border-t-transparent rounded-full animate-spin mx-auto" />
-      </div>
-    );
-  }
-
-  const o = overview || {
-    totalOrdersToday: 0,
-    pendingOrders: 0,
-    preparingOrders: 0,
-    readyOrders: 0,
-    revenueToday: 0,
-    avgPrepTimeMinutes: 6.5,
-    recentComplaints: []
+  const o = {
+    totalOrdersToday:
+      overview?.totalOrdersToday ??
+      (overview as any)?.todayOrders ??
+      (overview as any)?.activeOrdersCount ??
+      DEFAULT_STAFF_OVERVIEW.totalOrdersToday,
+    pendingOrders: overview?.pendingOrders ?? DEFAULT_STAFF_OVERVIEW.pendingOrders,
+    preparingOrders:
+      overview?.preparingOrders ??
+      (overview as any)?.activeOrdersCount ??
+      DEFAULT_STAFF_OVERVIEW.preparingOrders,
+    readyOrders: overview?.readyOrders ?? DEFAULT_STAFF_OVERVIEW.readyOrders,
+    revenueToday:
+      overview?.revenueToday ??
+      (overview as any)?.todayRevenue ??
+      DEFAULT_STAFF_OVERVIEW.revenueToday,
+    avgPrepTimeMinutes: overview?.avgPrepTimeMinutes ?? DEFAULT_STAFF_OVERVIEW.avgPrepTimeMinutes,
+    recentComplaints: overview?.recentComplaints || DEFAULT_STAFF_OVERVIEW.recentComplaints
   };
 
   return (

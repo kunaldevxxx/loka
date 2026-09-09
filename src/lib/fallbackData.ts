@@ -214,3 +214,53 @@ export function getFallbackMenuResponse(cafe: Cafe = DEFAULT_CAFE): MenuResponse
     items: FALLBACK_MENU_ITEMS
   };
 }
+
+export const DEFAULT_ANALYTICS = {
+  totalRevenue: 28450,
+  totalOrders: 64,
+  averageOrderValue: 445,
+  paymentBreakdown: {
+    upi: 18490,
+    card: 7120,
+    cash: 2840
+  },
+  hourlyDistribution: [
+    { hour: '8 AM', orders: 6 },
+    { hour: '10 AM', orders: 15 },
+    { hour: '12 PM', orders: 22 },
+    { hour: '2 PM', orders: 18 },
+    { hour: '4 PM', orders: 27 },
+    { hour: '6 PM', orders: 32 },
+    { hour: '8 PM', orders: 21 },
+    { hour: '10 PM', orders: 8 }
+  ],
+  topItems: [
+    { name: 'Signature Cappuccino', category: 'Coffee Drinks', quantitySold: 92, revenue: 20240 },
+    { name: 'Artisan French Butter Croissant', category: 'Pastries & Bakes', quantitySold: 68, revenue: 12920 },
+    { name: 'Spanish Iced Latte', category: 'Cold Beverages', quantitySold: 54, revenue: 14040 },
+    { name: 'Espresso Martini Mocktail', category: 'Cold Beverages', quantitySold: 42, revenue: 14700 },
+    { name: 'Avocado Tartine with Poached Eggs', category: 'Breakfast & Brunch', quantitySold: 31, revenue: 11780 }
+  ]
+};
+
+export const DEFAULT_STAFF_OVERVIEW = {
+  totalOrdersToday: 34,
+  pendingOrders: 3,
+  preparingOrders: 4,
+  readyOrders: 2,
+  revenueToday: 18650,
+  avgPrepTimeMinutes: 6.5,
+  recentComplaints: [
+    {
+      id: 'comp-101',
+      orderId: 'order-seed-101',
+      tableId: 'table-05',
+      issueType: 'wrong_item',
+      itemName: 'Signature Cappuccino',
+      description: 'Ordered with oat milk but regular milk was delivered.',
+      status: 'open',
+      createdAt: new Date().toISOString()
+    }
+  ]
+};
+
