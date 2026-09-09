@@ -1,0 +1,3 @@
+# Cloudflare Pages Single Page App (SPA) rewrite rule
+# Direct all routes to index.html with HTTP 200 so React Router handles client routing
+/*    /index.html   200
