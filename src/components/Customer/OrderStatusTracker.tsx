@@ -80,7 +80,7 @@ export const OrderStatusTracker: React.FC = () => {
     );
   }
 
-  if (loading && !statusData) {
+  if (!statusData) {
     return (
       <div className="max-w-xl mx-auto px-4 py-20 text-center space-y-4">
         <div className="relative w-12 h-12 mx-auto">
@@ -98,7 +98,7 @@ export const OrderStatusTracker: React.FC = () => {
       key: 'confirmed',
       title: 'Order Confirmed',
       desc: 'Dispatched to barista and kitchen tickets',
-      timestamp: statusData?.timestamps.confirmed || statusData?.timestamps.created,
+      timestamp: statusData?.timestamps?.confirmed || statusData?.timestamps?.created,
       icon: CheckCircle2,
       color: 'text-amber-500'
     },
@@ -107,7 +107,7 @@ export const OrderStatusTracker: React.FC = () => {
       key: 'preparing',
       title: 'Preparing in Kitchen',
       desc: 'Pulling espresso shots, steaming milk & baking',
-      timestamp: statusData?.timestamps.preparing,
+      timestamp: statusData?.timestamps?.preparing,
       icon: ChefHat,
       color: 'text-orange-500'
     },
@@ -116,7 +116,7 @@ export const OrderStatusTracker: React.FC = () => {
       key: 'ready',
       title: 'Ready for Collection',
       desc: 'Placed at bar counter ready for table pickup',
-      timestamp: statusData?.timestamps.ready,
+      timestamp: statusData?.timestamps?.ready,
       icon: PackageCheck,
       color: 'text-emerald-500'
     },
@@ -125,7 +125,7 @@ export const OrderStatusTracker: React.FC = () => {
       key: 'collected',
       title: 'Order Enjoyed & Complete',
       desc: 'Collected by patron. Thank you for dining with us!',
-      timestamp: statusData?.timestamps.collected,
+      timestamp: statusData?.timestamps?.collected,
       icon: Sparkles,
       color: 'text-cyan-500'
     }

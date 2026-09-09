@@ -203,6 +203,8 @@ export interface Complaint {
   sessionToken?: string;
   createdAt: string;
   status: 'open' | 'resolved';
+  resolvedAt?: string;
+  resolvedBy?: string;
 }
 
 export interface ComplaintInput {

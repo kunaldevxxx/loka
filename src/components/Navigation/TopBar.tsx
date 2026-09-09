@@ -12,7 +12,10 @@ import {
   ChefHat,
   Store,
   MapPin,
-  Sparkles
+  Sparkles,
+  LayoutDashboard,
+  TrendingUp,
+  AlertTriangle
 } from 'lucide-react';
 
 export const TopBar: React.FC = () => {
@@ -30,6 +33,9 @@ export const TopBar: React.FC = () => {
     setIsAuthModalOpen,
     currentUser,
     isStaffUser,
+    isManager,
+    isChef,
+    isCustomer,
     logout,
     activeOrderId
   } = useApp();
@@ -39,6 +45,7 @@ export const TopBar: React.FC = () => {
     'kds',
     'order_management',
     'analytics',
+    'complaints',
     'menu_management'
   ].includes(activeView);
 
@@ -78,102 +85,187 @@ export const TopBar: React.FC = () => {
             </div>
           </button>
 
-          {/* Table Selector Pill */}
-          <div className="flex items-center gap-1.5 bg-[var(--muted)]/90 px-2.5 py-1 rounded-full border border-[var(--border)] text-xs shadow-inner">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
-            <span className="text-[var(--muted-foreground)] font-semibold hidden xs:inline">Table:</span>
-            <select
-              value={tableId}
-              onChange={(e) => setTableId(e.target.value)}
-              className="bg-transparent font-bold text-[var(--card-foreground)] focus:outline-none cursor-pointer text-xs pr-1"
-            >
-              <option value="table-01">T-01 (Window)</option>
-              <option value="table-02">T-02 (Bar)</option>
-              <option value="table-03">T-03 (Booth)</option>
-              <option value="table-05">T-05 (Outdoor)</option>
-              <option value="table-07">T-07 (Lounge)</option>
-              <option value="table-10">T-10 (Balcony)</option>
-            </select>
-          </div>
+          {/* Table Selector or Station Indicator */}
+          {isChef ? (
+            <div className="flex items-center gap-1.5 bg-amber-500/15 px-2.5 py-1 rounded-full border border-amber-500/25 text-xs shadow-inner">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse flex-shrink-0" />
+              <span className="text-amber-600 dark:text-amber-400 font-bold">Kitchen Pass</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 bg-[var(--muted)]/90 px-2.5 py-1 rounded-full border border-[var(--border)] text-xs shadow-inner">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
+              <span className="text-[var(--muted-foreground)] font-semibold hidden xs:inline">Table:</span>
+              <select
+                value={tableId}
+                onChange={(e) => setTableId(e.target.value)}
+                className="bg-transparent font-bold text-[var(--card-foreground)] focus:outline-none cursor-pointer text-xs pr-1"
+              >
+                <option value="table-01">T-01 (Window)</option>
+                <option value="table-02">T-02 (Bar)</option>
+                <option value="table-03">T-03 (Booth)</option>
+                <option value="table-05">T-05 (Outdoor)</option>
+                <option value="table-07">T-07 (Lounge)</option>
+                <option value="table-10">T-10 (Balcony)</option>
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Center / Navigation mode tabs (Desktop) */}
         <nav className="hidden md:flex items-center gap-1 p-1 bg-[var(--muted)]/80 rounded-full border border-[var(--border)] text-xs font-semibold backdrop-blur-md shadow-inner">
-          <button
-            onClick={() => setActiveView('menu')}
-            className={`px-3.5 py-1.5 rounded-full transition-all duration-200 flex items-center gap-1.5 ${
-              activeView === 'menu'
-                ? 'bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md font-bold'
-                : 'text-[var(--muted-foreground)] hover:text-[var(--card-foreground)] hover:bg-[var(--card)]/50'
-            }`}
-          >
-            <Coffee className="w-3.5 h-3.5" />
-            <span>Menu</span>
-          </button>
-          <button
-            onClick={() => setActiveView('discovery')}
-            className={`px-3.5 py-1.5 rounded-full transition-all duration-200 flex items-center gap-1.5 ${
-              activeView === 'discovery'
-                ? 'bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md font-bold'
-                : 'text-[var(--muted-foreground)] hover:text-[var(--card-foreground)] hover:bg-[var(--card)]/50'
-            }`}
-          >
-            <Store className="w-3.5 h-3.5" />
-            <span>Venues</span>
-          </button>
-          {activeOrderId && (
-            <button
-              onClick={() => setActiveView('order_status')}
-              className={`px-3.5 py-1.5 rounded-full transition-all duration-200 flex items-center gap-1.5 ${
-                activeView === 'order_status'
-                  ? 'bg-emerald-600 text-white shadow-md font-bold'
-                  : 'text-emerald-500 hover:text-emerald-400 bg-emerald-500/10'
-              }`}
-            >
+          {/* Chef View: Only Kitchen Requests */}
+          {isChef && (
+            <div className="px-4 py-1.5 rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] shadow-md font-bold flex items-center gap-2">
+              <ChefHat className="w-4 h-4" />
+              <span>Kitchen Requests</span>
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
-              <span>Live Order</span>
-            </button>
+            </div>
           )}
-          {isStaffUser && (
-            <button
-              onClick={() => setActiveView('kds')}
-              className={`px-3.5 py-1.5 rounded-full transition-all duration-200 flex items-center gap-1.5 ${
-                isStaffView
-                  ? 'bg-[var(--accent)] text-[var(--accent-foreground)] shadow-md font-bold'
-                  : 'text-[var(--muted-foreground)] hover:text-[var(--card-foreground)] hover:bg-[var(--card)]/50'
-              }`}
-            >
-              <ChefHat className="w-3.5 h-3.5" />
-              <span>Staff / KDS</span>
-            </button>
+
+          {/* Manager View: Dashboard, Requests, Analytics, Complaints, Menu & Stock, Customer View */}
+          {isManager && (
+            <>
+              <button
+                onClick={() => setActiveView('staff_dashboard')}
+                className={`px-3 py-1.5 rounded-full transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                  activeView === 'staff_dashboard'
+                    ? 'bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md font-bold'
+                    : 'text-[var(--muted-foreground)] hover:text-[var(--card-foreground)] hover:bg-[var(--card)]/50'
+                }`}
+              >
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                <span>Dashboard</span>
+              </button>
+              <button
+                onClick={() => setActiveView('kds')}
+                className={`px-3 py-1.5 rounded-full transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                  activeView === 'kds'
+                    ? 'bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md font-bold'
+                    : 'text-[var(--muted-foreground)] hover:text-[var(--card-foreground)] hover:bg-[var(--card)]/50'
+                }`}
+              >
+                <ChefHat className="w-3.5 h-3.5" />
+                <span>Requests</span>
+              </button>
+              <button
+                onClick={() => setActiveView('analytics')}
+                className={`px-3 py-1.5 rounded-full transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                  activeView === 'analytics'
+                    ? 'bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md font-bold'
+                    : 'text-[var(--muted-foreground)] hover:text-[var(--card-foreground)] hover:bg-[var(--card)]/50'
+                }`}
+              >
+                <TrendingUp className="w-3.5 h-3.5" />
+                <span>Analytics</span>
+              </button>
+              <button
+                onClick={() => setActiveView('complaints')}
+                className={`px-3 py-1.5 rounded-full transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                  activeView === 'complaints'
+                    ? 'bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md font-bold'
+                    : 'text-[var(--muted-foreground)] hover:text-[var(--card-foreground)] hover:bg-[var(--card)]/50'
+                }`}
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                <span>Complaints</span>
+              </button>
+              <button
+                onClick={() => setActiveView('menu_management')}
+                className={`px-3 py-1.5 rounded-full transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                  activeView === 'menu_management'
+                    ? 'bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md font-bold'
+                    : 'text-[var(--muted-foreground)] hover:text-[var(--card-foreground)] hover:bg-[var(--card)]/50'
+                }`}
+              >
+                <Coffee className="w-3.5 h-3.5" />
+                <span>Stock / Menu</span>
+              </button>
+              <button
+                onClick={() => setActiveView('menu')}
+                className={`px-2.5 py-1 rounded-full text-[11px] transition-all duration-200 flex items-center gap-1 cursor-pointer ${
+                  activeView === 'menu'
+                    ? 'bg-[var(--muted)] text-[var(--card-foreground)] font-bold border border-[var(--border)]'
+                    : 'text-[var(--muted-foreground)] hover:text-[var(--card-foreground)]'
+                }`}
+                title="Preview Customer Menu"
+              >
+                <Store className="w-3 h-3" />
+                <span>Customer View</span>
+              </button>
+            </>
+          )}
+
+          {/* Normal Customer View: Menu, Venues, Live Order (NO staff tools) */}
+          {isCustomer && (
+            <>
+              <button
+                onClick={() => setActiveView('menu')}
+                className={`px-3.5 py-1.5 rounded-full transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                  activeView === 'menu'
+                    ? 'bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md font-bold'
+                    : 'text-[var(--muted-foreground)] hover:text-[var(--card-foreground)] hover:bg-[var(--card)]/50'
+                }`}
+              >
+                <Coffee className="w-3.5 h-3.5" />
+                <span>Menu</span>
+              </button>
+              <button
+                onClick={() => setActiveView('discovery')}
+                className={`px-3.5 py-1.5 rounded-full transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                  activeView === 'discovery'
+                    ? 'bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md font-bold'
+                    : 'text-[var(--muted-foreground)] hover:text-[var(--card-foreground)] hover:bg-[var(--card)]/50'
+                }`}
+              >
+                <Store className="w-3.5 h-3.5" />
+                <span>Venues</span>
+              </button>
+              {activeOrderId && (
+                <button
+                  onClick={() => setActiveView('order_status')}
+                  className={`px-3.5 py-1.5 rounded-full transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                    activeView === 'order_status'
+                      ? 'bg-emerald-600 text-white shadow-md font-bold'
+                      : 'text-emerald-500 hover:text-emerald-400 bg-emerald-500/10'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
+                  <span>Live Order</span>
+                </button>
+              )}
+            </>
           )}
         </nav>
 
         {/* Right Action Icons */}
         <div className="flex items-center gap-1 sm:gap-2">
-          {/* Voice Assistant Trigger */}
-          <button
-            onClick={() => setIsVoiceModalOpen(true)}
-            className="p-2 sm:p-2.5 rounded-2xl bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 dark:text-orange-400 transition-all relative border border-orange-500/20 active:scale-95"
-            title="Voice Assistant Order (Multilingual AI)"
-          >
-            <Mic className="w-4 h-4" />
-            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-orange-500 animate-ping" />
-          </button>
+          {/* Customer Voice Assistant Trigger (Customer only) */}
+          {isCustomer && (
+            <button
+              onClick={() => setIsVoiceModalOpen(true)}
+              className="p-2 sm:p-2.5 rounded-2xl bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 dark:text-orange-400 transition-all relative border border-orange-500/20 active:scale-95 cursor-pointer"
+              title="Voice Assistant Order (Multilingual AI)"
+            >
+              <Mic className="w-4 h-4" />
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-orange-500 animate-ping" />
+            </button>
+          )}
 
-          {/* QR Scanner / Generator */}
-          <button
-            onClick={() => setIsQRModalOpen(true)}
-            className="p-2 sm:p-2.5 rounded-2xl hover:bg-[var(--muted)] text-[var(--card-foreground)] transition-all border border-transparent hover:border-[var(--border)] active:scale-95"
-            title="QR Code & Table Scanner"
-          >
-            <QrCode className="w-4 h-4" />
-          </button>
+          {/* QR Scanner / Generator (Customer & Manager) */}
+          {!isChef && (
+            <button
+              onClick={() => setIsQRModalOpen(true)}
+              className="p-2 sm:p-2.5 rounded-2xl hover:bg-[var(--muted)] text-[var(--card-foreground)] transition-all border border-transparent hover:border-[var(--border)] active:scale-95 cursor-pointer"
+              title="QR Code & Table Scanner"
+            >
+              <QrCode className="w-4 h-4" />
+            </button>
+          )}
 
           {/* Dark Mode Toggle */}
           <button
             onClick={toggleDarkMode}
-            className="p-2 sm:p-2.5 rounded-2xl hover:bg-[var(--muted)] text-[var(--card-foreground)] transition-all border border-transparent hover:border-[var(--border)] active:scale-95 group"
+            className="p-2 sm:p-2.5 rounded-2xl hover:bg-[var(--muted)] text-[var(--card-foreground)] transition-all border border-transparent hover:border-[var(--border)] active:scale-95 group cursor-pointer"
             title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           >
             {isDarkMode ? (
@@ -183,39 +275,55 @@ export const TopBar: React.FC = () => {
             )}
           </button>
 
-          {/* Cart Trigger */}
-          <button
-            onClick={() => setActiveView('cart')}
-            className="relative px-3 sm:px-4 py-2 rounded-2xl flex items-center gap-1.5 transition-all duration-200 text-xs font-bold border border-transparent shadow-md hover:scale-105 active:scale-95"
-            style={{
-              backgroundColor: 'var(--primary)',
-              color: 'var(--primary-foreground)'
-            }}
-          >
-            <ShoppingBag className="w-4 h-4" />
-            <span className="hidden sm:inline">Cart</span>
-            {cartCount > 0 && (
-              <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] text-[10px] font-black shadow-sm">
-                {cartCount}
-              </span>
-            )}
-          </button>
+          {/* Cart Trigger (Customer and Manager preview; hidden for Chef) */}
+          {!isChef && (
+            <button
+              onClick={() => setActiveView('cart')}
+              className="relative px-3 sm:px-4 py-2 rounded-2xl flex items-center gap-1.5 transition-all duration-200 text-xs font-bold border border-transparent shadow-md hover:scale-105 active:scale-95 cursor-pointer"
+              style={{
+                backgroundColor: 'var(--primary)',
+                color: 'var(--primary-foreground)'
+              }}
+            >
+              <ShoppingBag className="w-4 h-4" />
+              <span className="hidden sm:inline">Cart</span>
+              {cartCount > 0 && (
+                <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] text-[10px] font-black shadow-sm">
+                  {cartCount}
+                </span>
+              )}
+            </button>
+          )}
 
-          {/* User Profile / Login */}
+          {/* User Profile / Role Badging / Login */}
           {currentUser ? (
-            <div className="flex items-center gap-1.5 pl-1">
+            <div className="flex items-center gap-2 pl-1">
+              <div className="hidden sm:flex flex-col items-end">
+                <span className="text-xs font-bold text-[var(--card-foreground)] leading-none">
+                  {currentUser?.name || currentUser?.email || 'User'}
+                </span>
+                <span className={`text-[10px] font-black uppercase tracking-wider ${
+                  currentUser?.role === 'chef'
+                    ? 'text-amber-500'
+                    : currentUser?.role === 'manager' || currentUser?.role === 'support'
+                    ? 'text-blue-500'
+                    : 'text-[var(--muted-foreground)]'
+                }`}>
+                  {currentUser?.role === 'chef' ? 'Chef' : currentUser?.role === 'manager' ? 'Manager' : currentUser?.role === 'support' ? 'Admin' : 'Customer'}
+                </span>
+              </div>
               <button
                 onClick={logout}
-                className="w-8 h-8 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center font-bold text-xs shadow-sm hover:ring-2 hover:ring-amber-400 transition-all"
-                title={`Logged in as ${currentUser.name} (${currentUser.role}). Click to log out.`}
+                className="w-8 h-8 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center font-bold text-xs shadow-sm hover:ring-2 hover:ring-amber-400 transition-all cursor-pointer"
+                title={`Logged in as ${currentUser?.name || currentUser?.email || 'User'} (${currentUser?.role || 'user'}). Click to log out.`}
               >
-                {currentUser.name.charAt(0).toUpperCase()}
+                {(currentUser?.name || currentUser?.email || 'U').charAt(0).toUpperCase()}
               </button>
             </div>
           ) : (
             <button
               onClick={() => setIsAuthModalOpen(true)}
-              className="p-2 sm:p-2.5 rounded-2xl hover:bg-[var(--muted)] text-[var(--card-foreground)] transition-all border border-transparent hover:border-[var(--border)]"
+              className="p-2 sm:p-2.5 rounded-2xl hover:bg-[var(--muted)] text-[var(--card-foreground)] transition-all border border-transparent hover:border-[var(--border)] cursor-pointer"
               title="Sign In / Register"
             >
               <UserIcon className="w-4 h-4" />

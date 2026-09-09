@@ -147,6 +147,14 @@ export const api = {
     request<SessionResponse>(`/api/session/${encodeURIComponent(sessionToken)}`),
 
   // Complaints
+  getStaffComplaints: (cafeId: string = 'cafe-001', status?: 'open' | 'resolved') => {
+    const params = new URLSearchParams();
+    if (cafeId) params.append('cafeId', cafeId);
+    if (status) params.append('status', status);
+    const qs = params.toString();
+    return request<{ complaints: Complaint[] }>(`/api/staff/complaints${qs ? `?${qs}` : ''}`);
+  },
+
   submitComplaint: (data: ComplaintInput) =>
     request<{ complaintId: string }>('/api/complaints', {
       method: 'POST',

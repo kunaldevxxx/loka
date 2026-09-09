@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Cafe, MenuItem, Order, User, CustomizationSelection } from '../types/api';
 import { api } from '../lib/api';
+import { DEFAULT_CAFE, FALLBACK_CAFES } from '../lib/fallbackData';
 
 export interface CartItem {
   id: string;
@@ -22,12 +23,13 @@ export type ActiveView =
   | 'kds'
   | 'order_management'
   | 'analytics'
+  | 'complaints'
   | 'menu_management'
   | 'api_inspector';
 
 interface AppContextType {
   // Cafe & Theme
-  currentCafe: Cafe | null;
+  currentCafe: Cafe;
   allCafes: Cafe[];
   setCurrentCafe: (cafe: Cafe) => void;
   isDarkMode: boolean;
@@ -46,6 +48,9 @@ interface AppContextType {
   // User / Auth
   currentUser: User | null;
   isStaffUser: boolean;
+  isManager: boolean;
+  isChef: boolean;
+  isCustomer: boolean;
   setCurrentUser: (user: User | null) => void;
   logout: () => void;
 
@@ -77,6 +82,8 @@ interface AppContextType {
   setIsVoiceModalOpen: (open: boolean) => void;
   isQRModalOpen: boolean;
   setIsQRModalOpen: (open: boolean) => void;
+  isTableModalOpen: boolean;
+  setIsTableModalOpen: (open: boolean) => void;
   isComplaintModalOpen: boolean;
   setIsComplaintModalOpen: (open: boolean) => void;
   isAuthModalOpen: boolean;
@@ -96,8 +103,9 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [allCafes, setAllCafes] = useState<Cafe[]>([]);
-  const [currentCafe, setCurrentCafeState] = useState<Cafe | null>(null);
+  const [allCafes, setAllCafes] = useState<Cafe[]>(FALLBACK_CAFES);
+  const [currentCafe, setCurrentCafeState] = useState<Cafe>(DEFAULT_CAFE);
+  const [isTableModalOpen, setIsTableModalOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     return localStorage.getItem('loka_dark_mode') === 'true';
   });
@@ -113,10 +121,33 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   });
   const [sessionToken, setSessionToken] = useState<string>('');
 
-  const [activeView, setActiveViewState] = useState<ActiveView>('menu');
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('loka_user');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('loka_user');
+      if (!saved || saved === 'undefined' || saved === 'null') return null;
+      const parsed = JSON.parse(saved);
+      if (parsed && typeof parsed === 'object') {
+        return parsed;
+      }
+      return null;
+    } catch {
+      localStorage.removeItem('loka_user');
+      return null;
+    }
+  });
+
+  const [activeView, setActiveViewState] = useState<ActiveView>(() => {
+    try {
+      const saved = localStorage.getItem('loka_user');
+      if (saved && saved !== 'undefined' && saved !== 'null') {
+        const u = JSON.parse(saved);
+        if (u?.role === 'chef') return 'kds';
+        if (u?.role === 'manager' || u?.role === 'support') return 'staff_dashboard';
+      }
+    } catch {
+      // ignore
+    }
+    return 'menu';
   });
 
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -145,15 +176,45 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }, 4000);
   };
 
-  const isStaffUser = Boolean(currentUser && ['manager', 'chef', 'support'].includes(currentUser.role));
-  const staffViews: ActiveView[] = ['staff_dashboard', 'kds', 'order_management', 'analytics', 'menu_management'];
+  const isManager = Boolean(currentUser && ['manager', 'support'].includes(currentUser.role));
+  const isChef = Boolean(currentUser && currentUser.role === 'chef');
+  const isStaffUser = isManager || isChef;
+  const isCustomer = !currentUser || currentUser.role === 'customer';
+
+  const staffViews: ActiveView[] = ['staff_dashboard', 'kds', 'order_management', 'analytics', 'complaints', 'menu_management'];
+  const managerOnlyViews: ActiveView[] = ['staff_dashboard', 'analytics', 'complaints', 'menu_management', 'order_management'];
+
   const setActiveView = (view: ActiveView) => {
-    if (staffViews.includes(view) && !isStaffUser) {
+    // 1. Chef check: Chef only has access to requests ('kds')
+    if (isChef && view !== 'kds') {
+      showToast('Chef access is restricted to Kitchen Requests.');
+      setActiveViewState('kds');
+      return;
+    }
+
+    // 2. Normal user (customer/guest) check: Customer only has access to menu/ordering views
+    if (isCustomer && staffViews.includes(view)) {
       showToast('Staff sign-in is required to access operations tools.');
       return;
     }
+
+    // 3. Prevent non-managers from accessing manager-only views
+    if (!isManager && managerOnlyViews.includes(view)) {
+      showToast('Manager credentials are required to access this panel.');
+      return;
+    }
+
     setActiveViewState(view);
   };
+
+  // Enforce role view boundaries when user changes
+  useEffect(() => {
+    if (currentUser?.role === 'chef') {
+      setActiveViewState('kds');
+    } else if (isCustomer && staffViews.includes(activeView)) {
+      setActiveViewState('menu');
+    }
+  }, [currentUser?.role]);
 
   const triggerRefresh = () => setRefreshTrigger((c) => c + 1);
 
@@ -161,13 +222,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     api.getAllCafes()
       .then((res) => {
-        setAllCafes(res.cafes);
-        if (res.cafes.length > 0 && !currentCafe) {
-          setCurrentCafeState(res.cafes[0]);
+        if (res.cafes && res.cafes.length > 0) {
+          setAllCafes(res.cafes);
+          setCurrentCafeState((prev) => {
+            const match = res.cafes.find((c) => c.cafeId === prev.cafeId);
+            return match || res.cafes[0];
+          });
         }
       })
       .catch((err) => {
-        console.error('Failed to load cafes', err);
+        console.warn('Using fallback cafe settings (backend /api/cafes unreachable):', err);
       });
   }, []);
 
@@ -396,6 +460,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setActiveView,
         currentUser,
         isStaffUser,
+        isManager,
+        isChef,
+        isCustomer,
         setCurrentUser,
         logout,
         cart,
@@ -419,6 +486,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setIsVoiceModalOpen,
         isQRModalOpen,
         setIsQRModalOpen,
+        isTableModalOpen,
+        setIsTableModalOpen,
         isComplaintModalOpen,
         setIsComplaintModalOpen,
         isAuthModalOpen,

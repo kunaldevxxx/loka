@@ -18,6 +18,7 @@ import { KitchenDisplaySystem } from './components/Staff/KitchenDisplaySystem';
 import { StaffDashboard } from './components/Staff/StaffDashboard';
 import { AnalyticsDashboard } from './components/Staff/AnalyticsDashboard';
 import { MenuManagement } from './components/Staff/MenuManagement';
+import { ComplaintsManagement } from './components/Staff/ComplaintsManagement';
 import { Mic, Clock, Sparkles } from 'lucide-react';
 
 function AppContent() {
@@ -26,12 +27,58 @@ function AppContent() {
     setActiveView,
     activeOrderId,
     setIsVoiceModalOpen,
-    toastMessage
+    toastMessage,
+    isChef,
+    isCustomer
   } = useApp();
 
-  const isStaffView = ['kds', 'staff_dashboard', 'order_management', 'analytics', 'menu_management'].includes(
-    activeView
-  );
+  const isStaffView = [
+    'kds',
+    'staff_dashboard',
+    'order_management',
+    'analytics',
+    'complaints',
+    'menu_management'
+  ].includes(activeView);
+
+  const renderMainContent = () => {
+    // 1. Chef: strictly allowed to view Kitchen Requests (KDS)
+    if (isChef) {
+      return <KitchenDisplaySystem />;
+    }
+
+    // 2. Normal customer / guest attempting to view staff view: gracefully default to menu
+    if (isCustomer && isStaffView) {
+      return <MenuPage />;
+    }
+
+    // 3. Render specific active view
+    switch (activeView) {
+      case 'menu':
+        return <MenuPage />;
+      case 'discovery':
+        return <CafeDiscovery />;
+      case 'cart':
+        return <CartDrawer />;
+      case 'order_status':
+        return <OrderStatusTracker />;
+      case 'receipt':
+        return <ReceiptModal />;
+      case 'kds':
+        return <KitchenDisplaySystem />;
+      case 'staff_dashboard':
+        return <StaffDashboard />;
+      case 'analytics':
+        return <AnalyticsDashboard />;
+      case 'complaints':
+        return <ComplaintsManagement />;
+      case 'menu_management':
+        return <MenuManagement />;
+      default:
+        // Guaranteed fallback to MenuPage so it NEVER leaves an empty or blank screen
+        return <MenuPage />;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] flex flex-col font-sans transition-colors duration-300 antialiased selection:bg-[var(--primary)] selection:text-[var(--primary-foreground)]">
@@ -40,19 +87,11 @@ function AppContent() {
 
       {/* Main Viewport Container */}
       <main className="flex-1 pb-24 md:pb-12">
-        {activeView === 'menu' && <MenuPage />}
-        {activeView === 'discovery' && <CafeDiscovery />}
-        {activeView === 'cart' && <CartDrawer />}
-        {activeView === 'order_status' && <OrderStatusTracker />}
-        {activeView === 'receipt' && <ReceiptModal />}
-        {activeView === 'kds' && <KitchenDisplaySystem />}
-        {activeView === 'staff_dashboard' && <StaffDashboard />}
-        {activeView === 'analytics' && <AnalyticsDashboard />}
-        {activeView === 'menu_management' && <MenuManagement />}
+        {renderMainContent()}
       </main>
 
-      {/* Customer Floating Quick-Access Bar (Hidden in Staff Views) */}
-      {!isStaffView && (
+      {/* Customer Floating Quick-Access Bar (Hidden for Staff & Chef Views) */}
+      {!isStaffView && !isChef && (
         <div className="fixed bottom-16 md:bottom-6 right-4 sm:right-8 z-40 flex items-center gap-3">
           {/* Active order badge button if active order */}
           {activeOrderId && activeView !== 'order_status' && (

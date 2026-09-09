@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../lib/api';
 import { MenuResponse, MenuItem, RecentOrder } from '../../types/api';
+import { getFallbackMenuResponse } from '../../lib/fallbackData';
 import { MenuItemCard } from './MenuItemCard';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -24,8 +25,10 @@ import {
 export const MenuPage: React.FC = () => {
   const { currentCafe, deviceId, setSelectedItemForCustomization, addToCart, showToast } = useApp();
 
-  const [menuData, setMenuData] = useState<MenuResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [menuData, setMenuData] = useState<MenuResponse | null>(() => {
+    return currentCafe ? getFallbackMenuResponse(currentCafe) : null;
+  });
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
@@ -37,7 +40,8 @@ export const MenuPage: React.FC = () => {
         setMenuData(res);
       })
       .catch((err) => {
-        console.error('Failed to load menu', err);
+        console.warn('Live menu fetch failed or offline; using fallback menu:', err);
+        setMenuData((prev) => prev || getFallbackMenuResponse(currentCafe));
       })
       .finally(() => setLoading(false));
   }, [currentCafe?.cafeId, deviceId]);

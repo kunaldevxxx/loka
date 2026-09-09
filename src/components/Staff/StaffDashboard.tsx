@@ -15,9 +15,15 @@ import {
 } from 'lucide-react';
 
 export const StaffDashboard: React.FC = () => {
-  const { currentCafe, setActiveView, refreshTrigger, triggerRefresh } = useApp();
+  const { currentCafe, setActiveView, refreshTrigger, triggerRefresh, isChef } = useApp();
   const [overview, setOverview] = useState<StaffOverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (isChef) {
+      setActiveView('kds');
+    }
+  }, [isChef]);
 
   const fetchOverview = () => {
     if (!currentCafe) return;
@@ -139,9 +145,13 @@ export const StaffDashboard: React.FC = () => {
               <AlertTriangle className="w-4 h-4 text-amber-500" />
               <span>Customer Issue Alerts & Floor Tickets</span>
             </h2>
-            <span className="text-[11px] text-[var(--muted-foreground)]">
-              {o.recentComplaints.length} active issues
-            </span>
+            <button
+              onClick={() => setActiveView('complaints')}
+              className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              <span>Manage All ({o.recentComplaints.length})</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
           </div>
 
           {o.recentComplaints.length === 0 ? (
@@ -174,7 +184,7 @@ export const StaffDashboard: React.FC = () => {
                       api.resolveComplaint(c.id);
                       triggerRefresh();
                     }}
-                    className="self-end sm:self-center px-3 py-1.5 rounded-xl font-bold bg-emerald-600 text-white text-[11px] hover:bg-emerald-700 transition-colors whitespace-nowrap"
+                    className="self-end sm:self-center px-3 py-1.5 rounded-xl font-bold bg-emerald-600 text-white text-[11px] hover:bg-emerald-700 transition-colors whitespace-nowrap cursor-pointer"
                   >
                     Mark Resolved
                   </button>
@@ -190,18 +200,18 @@ export const StaffDashboard: React.FC = () => {
           
           <button
             onClick={() => setActiveView('kds')}
-            className="w-full p-3.5 rounded-2xl border border-[var(--border)] hover:bg-[var(--muted)] transition-colors flex items-center justify-between text-xs font-bold"
+            className="w-full p-3.5 rounded-2xl border border-[var(--border)] hover:bg-[var(--muted)] transition-colors flex items-center justify-between text-xs font-bold cursor-pointer"
           >
             <span className="flex items-center gap-2">
               <ChefHat className="w-4 h-4 text-[var(--primary)]" />
-              <span>Kitchen Display System</span>
+              <span>Kitchen Display System (KDS)</span>
             </span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
 
           <button
             onClick={() => setActiveView('analytics')}
-            className="w-full p-3.5 rounded-2xl border border-[var(--border)] hover:bg-[var(--muted)] transition-colors flex items-center justify-between text-xs font-bold"
+            className="w-full p-3.5 rounded-2xl border border-[var(--border)] hover:bg-[var(--muted)] transition-colors flex items-center justify-between text-xs font-bold cursor-pointer"
           >
             <span className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-emerald-500" />
@@ -211,8 +221,19 @@ export const StaffDashboard: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setActiveView('complaints')}
+            className="w-full p-3.5 rounded-2xl border border-[var(--border)] hover:bg-[var(--muted)] transition-colors flex items-center justify-between text-xs font-bold cursor-pointer"
+          >
+            <span className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
+              <span>Complaints & Floor Tickets</span>
+            </span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+
+          <button
             onClick={() => setActiveView('menu_management')}
-            className="w-full p-3.5 rounded-2xl border border-[var(--border)] hover:bg-[var(--muted)] transition-colors flex items-center justify-between text-xs font-bold"
+            className="w-full p-3.5 rounded-2xl border border-[var(--border)] hover:bg-[var(--muted)] transition-colors flex items-center justify-between text-xs font-bold cursor-pointer"
           >
             <span className="flex items-center gap-2">
               <ShoppingBag className="w-4 h-4 text-blue-500" />

@@ -4,7 +4,7 @@ import { api } from '../../lib/api';
 import { X, Lock, Mail, User as UserIcon, Shield, Check } from 'lucide-react';
 
 export const AuthModal: React.FC = () => {
-  const { isAuthModalOpen, setIsAuthModalOpen, setCurrentUser, showToast } = useApp();
+  const { isAuthModalOpen, setIsAuthModalOpen, setCurrentUser, showToast, setActiveView } = useApp();
 
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('user@example.com');
@@ -24,12 +24,20 @@ export const AuthModal: React.FC = () => {
         localStorage.setItem('loka_auth_token', res.token);
         setCurrentUser(res.user);
         showToast(`Welcome back, ${res.user.name}!`);
+        if (res.user.role === 'chef') {
+          setActiveView('kds');
+        } else if (['manager', 'support'].includes(res.user.role)) {
+          setActiveView('staff_dashboard');
+        } else {
+          setActiveView('menu');
+        }
         setIsAuthModalOpen(false);
       } else {
         const res = await api.register({ email, password, name });
         localStorage.setItem('loka_auth_token', res.token);
         setCurrentUser(res.user);
         showToast('Customer account created!');
+        setActiveView('menu');
         setIsAuthModalOpen(false);
       }
     } catch (err: any) {
@@ -46,6 +54,13 @@ export const AuthModal: React.FC = () => {
       localStorage.setItem('loka_auth_token', res.token);
       setCurrentUser(res.user);
       showToast(`Signed in with Google as ${res.user.name}`);
+      if (res.user.role === 'chef') {
+        setActiveView('kds');
+      } else if (['manager', 'support'].includes(res.user.role)) {
+        setActiveView('staff_dashboard');
+      } else {
+        setActiveView('menu');
+      }
       setIsAuthModalOpen(false);
     } catch (err: any) {
       showToast(err.message || 'Google login failed');
