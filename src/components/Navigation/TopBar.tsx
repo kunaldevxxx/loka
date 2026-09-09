@@ -15,12 +15,15 @@ import {
   Sparkles,
   LayoutDashboard,
   TrendingUp,
-  AlertTriangle
+  AlertTriangle,
+  Plus
 } from 'lucide-react';
 
 export const TopBar: React.FC = () => {
   const {
     currentCafe,
+    allCafes,
+    setCurrentCafe,
     tableId,
     setTableId,
     cartCount,
@@ -31,9 +34,13 @@ export const TopBar: React.FC = () => {
     setIsVoiceModalOpen,
     setIsQRModalOpen,
     setIsAuthModalOpen,
+    isVenueOnboardingOpen,
+    setIsVenueOnboardingOpen,
     currentUser,
     isStaffUser,
     isManager,
+    isVenueManager,
+    isSupport,
     isChef,
     isCustomer,
     logout,
@@ -55,59 +62,157 @@ export const TopBar: React.FC = () => {
       <div className="h-0.5 w-full bg-gradient-to-r from-amber-500 via-[var(--primary)] to-orange-500 opacity-80" />
 
       <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2">
-        {/* Left: Brand / Cafe info */}
+        {/* Left: Brand / Cafe info & Scoped Venue Status */}
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <button
-            onClick={() => setActiveView('discovery')}
-            className="flex items-center gap-2 sm:gap-2.5 text-left focus:outline-none group"
-            title="Browse Cafes"
-          >
-            <div
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center font-bold text-lg sm:text-xl shadow-md border border-[var(--border)] transition-all duration-300 group-hover:scale-105 group-hover:shadow-amber-500/20"
-              style={{
-                backgroundColor: 'var(--primary)',
-                color: 'var(--primary-foreground)'
-              }}
-            >
-              {currentCafe?.icon || '☕'}
-            </div>
-            <div className="truncate hidden sm:block">
-              <div className="font-extrabold text-sm leading-tight text-[var(--card-foreground)] flex items-center gap-1.5">
-                <span className="truncate">{currentCafe?.name || 'Loka Cafe'}</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/20">
-                  {currentCafe?.venueType || 'Cafe'}
-                </span>
+          {/* 1. Global Support: Multi-Venue Switcher */}
+          {isSupport ? (
+            <div className="flex items-center gap-2.5">
+              <div
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center font-bold text-lg sm:text-xl shadow-md border border-[var(--border)]"
+                style={{
+                  backgroundColor: 'var(--primary)',
+                  color: 'var(--primary-foreground)'
+                }}
+              >
+                {currentCafe?.icon || '☕'}
               </div>
-              <div className="text-xs text-[var(--muted-foreground)] flex items-center gap-1 truncate font-medium">
-                <MapPin className="w-3 h-3 flex-shrink-0 text-amber-500" />
-                <span className="truncate">{currentCafe?.location || 'Select Location'}</span>
-              </div>
-            </div>
-          </button>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 font-black border border-blue-500/20 uppercase tracking-wider">
+                    Global Support
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <select
+                    value={currentCafe?.cafeId}
+                    onChange={(e) => {
+                      const selected = allCafes.find((c) => c.cafeId === e.target.value);
+                      if (selected) setCurrentCafe(selected);
+                    }}
+                    className="bg-transparent font-extrabold text-xs text-[var(--card-foreground)] focus:outline-none cursor-pointer pr-1 hover:text-blue-500"
+                    title="Switch active cafe to manage"
+                  >
+                    {allCafes.map((c) => (
+                      <option key={c.cafeId} value={c.cafeId} className="bg-[var(--card)] text-[var(--card-foreground)]">
+                        {c.name} ({c.venueType})
+                      </option>
+                    ))}
+                  </select>
 
-          {/* Table Selector or Station Indicator */}
-          {isChef ? (
-            <div className="flex items-center gap-1.5 bg-amber-500/15 px-2.5 py-1 rounded-full border border-amber-500/25 text-xs shadow-inner">
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse flex-shrink-0" />
-              <span className="text-amber-600 dark:text-amber-400 font-bold">Kitchen Pass</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsVenueOnboardingOpen(true)}
+                    className="px-2 py-0.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer shadow-2xs whitespace-nowrap"
+                    title="Onboard or create new venue"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span className="hidden sm:inline">Onboard Venue</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : isVenueManager ? (
+            /* 2. Manager: Strictly locked to assigned venue */
+            <div className="flex items-center gap-2.5">
+              <div
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center font-bold text-lg sm:text-xl shadow-md border border-[var(--border)]"
+                style={{
+                  backgroundColor: 'var(--primary)',
+                  color: 'var(--primary-foreground)'
+                }}
+              >
+                {currentCafe?.icon || '☕'}
+              </div>
+              <div className="truncate">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-sm text-[var(--card-foreground)] truncate max-w-[130px] sm:max-w-[180px]">
+                    {currentCafe?.name}
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/20">
+                    Manager
+                  </span>
+                </div>
+                <div className="text-xs text-[var(--muted-foreground)] flex items-center gap-1 truncate font-medium">
+                  <MapPin className="w-3 h-3 flex-shrink-0 text-amber-500" />
+                  <span className="truncate max-w-[150px]">{currentCafe?.location}</span>
+                </div>
+              </div>
+            </div>
+          ) : isChef ? (
+            /* 3. Chef: Strictly locked to assigned kitchen */
+            <div className="flex items-center gap-2.5">
+              <div
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center font-bold text-lg sm:text-xl shadow-md border border-[var(--border)]"
+                style={{
+                  backgroundColor: 'var(--primary)',
+                  color: 'var(--primary-foreground)'
+                }}
+              >
+                {currentCafe?.icon || '☕'}
+              </div>
+              <div className="truncate">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-sm text-[var(--card-foreground)] truncate max-w-[130px] sm:max-w-[180px]">
+                    {currentCafe?.name}
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-600 dark:text-orange-400 font-bold border border-orange-500/20">
+                    Kitchen Pass
+                  </span>
+                </div>
+                <div className="text-xs text-[var(--muted-foreground)] flex items-center gap-1 truncate font-medium">
+                  <MapPin className="w-3 h-3 flex-shrink-0 text-amber-500" />
+                  <span className="truncate max-w-[150px]">{currentCafe?.location}</span>
+                </div>
+              </div>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 bg-[var(--muted)]/90 px-2.5 py-1 rounded-full border border-[var(--border)] text-xs shadow-inner">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
-              <span className="text-[var(--muted-foreground)] font-semibold hidden xs:inline">Table:</span>
-              <select
-                value={tableId}
-                onChange={(e) => setTableId(e.target.value)}
-                className="bg-transparent font-bold text-[var(--card-foreground)] focus:outline-none cursor-pointer text-xs pr-1"
+            /* 4. Customer: Interactive Cafe Header & Table Selector */
+            <>
+              <button
+                onClick={() => setActiveView('discovery')}
+                className="flex items-center gap-2 sm:gap-2.5 text-left focus:outline-none group"
+                title="Browse Cafes & Dish Recommendations"
               >
-                <option value="table-01">T-01 (Window)</option>
-                <option value="table-02">T-02 (Bar)</option>
-                <option value="table-03">T-03 (Booth)</option>
-                <option value="table-05">T-05 (Outdoor)</option>
-                <option value="table-07">T-07 (Lounge)</option>
-                <option value="table-10">T-10 (Balcony)</option>
-              </select>
-            </div>
+                <div
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center font-bold text-lg sm:text-xl shadow-md border border-[var(--border)] transition-all duration-300 group-hover:scale-105 group-hover:shadow-amber-500/20"
+                  style={{
+                    backgroundColor: 'var(--primary)',
+                    color: 'var(--primary-foreground)'
+                  }}
+                >
+                  {currentCafe?.icon || '☕'}
+                </div>
+                <div className="truncate hidden sm:block">
+                  <div className="font-extrabold text-sm leading-tight text-[var(--card-foreground)] flex items-center gap-1.5">
+                    <span className="truncate">{currentCafe?.name || 'Loka Cafe'}</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/20">
+                      {currentCafe?.venueType || 'Cafe'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-[var(--muted-foreground)] flex items-center gap-1 truncate font-medium">
+                    <MapPin className="w-3 h-3 flex-shrink-0 text-amber-500" />
+                    <span className="truncate">{currentCafe?.location || 'Select Location'}</span>
+                  </div>
+                </div>
+              </button>
+
+              <div className="flex items-center gap-1.5 bg-[var(--muted)]/90 px-2.5 py-1 rounded-full border border-[var(--border)] text-xs shadow-inner">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
+                <span className="text-[var(--muted-foreground)] font-semibold hidden xs:inline">Table:</span>
+                <select
+                  value={tableId}
+                  onChange={(e) => setTableId(e.target.value)}
+                  className="bg-transparent font-bold text-[var(--card-foreground)] focus:outline-none cursor-pointer text-xs pr-1"
+                >
+                  <option value="table-01">T-01 (Window)</option>
+                  <option value="table-02">T-02 (Bar)</option>
+                  <option value="table-03">T-03 (Booth)</option>
+                  <option value="table-05">T-05 (Outdoor)</option>
+                  <option value="table-07">T-07 (Lounge)</option>
+                  <option value="table-10">T-10 (Balcony)</option>
+                </select>
+              </div>
+            </>
           )}
         </div>
 
@@ -122,7 +227,7 @@ export const TopBar: React.FC = () => {
             </div>
           )}
 
-          {/* Manager View: Dashboard, Requests, Analytics, Complaints, Menu & Stock, Customer View */}
+          {/* Manager & Support View: Dashboard, Requests, Analytics, Complaints, Menu & Stock */}
           {isManager && (
             <>
               <button
@@ -180,6 +285,22 @@ export const TopBar: React.FC = () => {
                 <Coffee className="w-3.5 h-3.5" />
                 <span>Stock / Menu</span>
               </button>
+
+              {isSupport && (
+                <button
+                  onClick={() => setActiveView('discovery')}
+                  className={`px-2.5 py-1 rounded-full text-[11px] transition-all duration-200 flex items-center gap-1 cursor-pointer ${
+                    activeView === 'discovery'
+                      ? 'bg-blue-600 text-white font-bold shadow-sm'
+                      : 'text-blue-500 hover:text-blue-400'
+                  }`}
+                  title="Dish & Venue Finder (Network View)"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  <span>Dish Finder</span>
+                </button>
+              )}
+
               <button
                 onClick={() => setActiveView('menu')}
                 className={`px-2.5 py-1 rounded-full text-[11px] transition-all duration-200 flex items-center gap-1 cursor-pointer ${
@@ -187,7 +308,7 @@ export const TopBar: React.FC = () => {
                     ? 'bg-[var(--muted)] text-[var(--card-foreground)] font-bold border border-[var(--border)]'
                     : 'text-[var(--muted-foreground)] hover:text-[var(--card-foreground)]'
                 }`}
-                title="Preview Customer Menu"
+                title="Preview Customer Menu for this Venue"
               >
                 <Store className="w-3 h-3" />
                 <span>Customer View</span>
@@ -195,7 +316,7 @@ export const TopBar: React.FC = () => {
             </>
           )}
 
-          {/* Normal Customer View: Menu, Venues, Live Order (NO staff tools) */}
+          {/* Normal Customer View: Menu, Dish & Venue Finder, Live Order (NO staff tools) */}
           {isCustomer && (
             <>
               <button
@@ -217,8 +338,8 @@ export const TopBar: React.FC = () => {
                     : 'text-[var(--muted-foreground)] hover:text-[var(--card-foreground)] hover:bg-[var(--card)]/50'
                 }`}
               >
-                <Store className="w-3.5 h-3.5" />
-                <span>Venues</span>
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>Dish & Venue Finder</span>
               </button>
               {activeOrderId && (
                 <button
@@ -309,7 +430,7 @@ export const TopBar: React.FC = () => {
                     ? 'text-blue-500'
                     : 'text-[var(--muted-foreground)]'
                 }`}>
-                  {currentUser?.role === 'chef' ? 'Chef' : currentUser?.role === 'manager' ? 'Manager' : currentUser?.role === 'support' ? 'Admin' : 'Customer'}
+                  {currentUser?.role === 'chef' ? 'Chef' : currentUser?.role === 'manager' ? 'Manager' : currentUser?.role === 'support' ? 'Support Admin' : 'Customer'}
                 </span>
               </div>
               <button

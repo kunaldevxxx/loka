@@ -65,6 +65,9 @@ class DataStore {
       throw new Error(`Cafe with id ${data.cafeId} already exists`);
     }
 
+    const defaultTheme = initialCafes[0].theme!;
+    const safeTheme = data.theme ? { ...defaultTheme, ...data.theme } : defaultTheme;
+
     const newCafe: Cafe = {
       cafeId: data.cafeId,
       name: data.name,
@@ -75,7 +78,7 @@ class DataStore {
       phone: data.phone || '+91-0000000000',
       defaultTableId: data.defaultTableId || 'table-01',
       specialtyItemIds: data.specialtyItemIds || [],
-      theme: data.theme || initialCafes[0].theme,
+      theme: safeTheme,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };

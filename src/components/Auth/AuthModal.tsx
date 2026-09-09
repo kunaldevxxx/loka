@@ -69,7 +69,7 @@ export const AuthModal: React.FC = () => {
     }
   };
 
-  const handleQuickFill = (type: 'customer' | 'manager' | 'chef') => {
+  const handleQuickFill = (type: 'customer' | 'manager' | 'chef' | 'support') => {
     if (type === 'customer') {
       setEmail('user@example.com');
       setPassword('securePassword123');
@@ -78,10 +78,14 @@ export const AuthModal: React.FC = () => {
       setEmail('manager@cafe.com');
       setPassword('managerPassword123');
       setName('Aarav Sharma');
-    } else {
+    } else if (type === 'chef') {
       setEmail('chef@cafe.com');
       setPassword('chefPassword123');
       setName('Chef Maria Rossi');
+    } else {
+      setEmail('support@cafe.com');
+      setPassword('supportPassword123');
+      setName('Dev Support Admin');
     }
   };
 
@@ -111,7 +115,7 @@ export const AuthModal: React.FC = () => {
           <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">
             Quick Fill Demo Accounts:
           </span>
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
               onClick={() => handleQuickFill('customer')}
@@ -131,7 +135,14 @@ export const AuthModal: React.FC = () => {
               onClick={() => handleQuickFill('chef')}
               className="px-2.5 py-1 rounded-lg bg-[var(--card)] text-[11px] font-bold border border-[var(--border)] hover:bg-[var(--muted)]"
             >
-              Chef / Barista
+              Chef
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickFill('support')}
+              className="px-2.5 py-1 rounded-lg bg-[var(--card)] text-[11px] font-bold border border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10"
+            >
+              Global Support
             </button>
           </div>
         </div>

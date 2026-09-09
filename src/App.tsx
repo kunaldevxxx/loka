@@ -19,6 +19,7 @@ import { StaffDashboard } from './components/Staff/StaffDashboard';
 import { AnalyticsDashboard } from './components/Staff/AnalyticsDashboard';
 import { MenuManagement } from './components/Staff/MenuManagement';
 import { ComplaintsManagement } from './components/Staff/ComplaintsManagement';
+import { VenueOnboardingModal } from './components/Admin/VenueOnboardingModal';
 import { Mic, Clock, Sparkles } from 'lucide-react';
 
 function AppContent() {
@@ -133,6 +134,7 @@ function AppContent() {
       <QRScannerModal />
       <TableSelectorModal />
       <AuthModal />
+      <VenueOnboardingModal />
 
       {/* Global Toast Notification */}
       {toastMessage && (

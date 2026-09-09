@@ -1,4 +1,4 @@
-import { Cafe, MenuItem, MenuResponse } from '../types/api';
+import { Cafe, MenuItem, MenuResponse, ExploreDish } from '../types/api';
 
 export const DEFAULT_CAFE: Cafe = {
   cafeId: 'cafe-001',
@@ -263,4 +263,152 @@ export const DEFAULT_STAFF_OVERVIEW = {
     }
   ]
 };
+
+export const EXPLORE_DISHES: ExploreDish[] = [
+  {
+    itemId: 'item-003',
+    name: 'Artisan French Butter Croissant',
+    description: 'Flaky viennoiserie made with 84% Normandy butter, honeycomb crumb, and golden caramelized layers.',
+    price: 190,
+    category: 'Pastries & Bakes',
+    rating: 4.9,
+    orders: 265,
+    image: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=600&auto=format&fit=crop&q=80',
+    cafeId: 'cafe-001',
+    cafeName: 'Brew Haven Cafe',
+    cafeIcon: '☕',
+    cafeLocation: 'Bandra West, Mumbai',
+    venueType: 'Artisanal Cafe',
+    bestTag: '🏆 #1 Ranked French Bakes',
+    recommendationReason: 'Hand-laminated daily and pulled fresh from the deck oven at 8:00 AM & 3:00 PM.',
+    tags: ['Croissant', 'Pastry', 'Breakfast', 'Butter']
+  },
+  {
+    itemId: 'item-004',
+    name: 'Signature Pour-Over Chemex (Yirgacheffe)',
+    description: 'Single-origin Ethiopian heirloom roasted in-house. Bright jasmine aromatics, bergamot citrus, and honey finish.',
+    price: 260,
+    category: 'Manual Brews',
+    rating: 4.9,
+    orders: 310,
+    image: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&auto=format&fit=crop&q=80',
+    cafeId: 'cafe-002',
+    cafeName: 'The Daily Grind Roasters',
+    cafeIcon: '🫘',
+    cafeLocation: 'Koramangala, Bangalore',
+    venueType: 'Direct Roastery',
+    bestTag: '☕ Best Pour-Over in Town',
+    recommendationReason: 'Brewed table-side using 93°C mineral-balanced water over custom bleached Chemex filters.',
+    tags: ['Single-Origin', 'Pour-Over', 'Coffee', 'Light Roast']
+  },
+  {
+    itemId: 'item-exp-01',
+    name: 'San Sebastián Burnt Basque Cheesecake',
+    description: 'Crustless Spanish cheesecake with deep caramelization on top and an ultra-silky, melting molten center.',
+    price: 320,
+    category: 'Desserts & Pairings',
+    rating: 4.95,
+    orders: 412,
+    image: 'https://images.unsplash.com/photo-1533134242443-d4fd215305ad?w=600&auto=format&fit=crop&q=80',
+    cafeId: 'cafe-003',
+    cafeName: 'Velvet Bean Lounge',
+    cafeIcon: '🍸',
+    cafeLocation: 'Hauz Khas Village, New Delhi',
+    venueType: 'Evening Lounge',
+    bestTag: '🍰 #1 Ranked Dessert',
+    recommendationReason: 'Baked in small batches with Philadelphia cream cheese and Madagascar Bourbon vanilla.',
+    tags: ['Cheesecake', 'Dessert', 'Sweet', 'Signature']
+  },
+  {
+    itemId: 'item-exp-02',
+    name: 'Avocado & Dukkah Sourdough Tartine',
+    description: 'Fresh Hass avocado mash, free-range poached eggs, micro-greens, and house Egyptian dukkah on 36h sourdough.',
+    price: 340,
+    category: 'Breakfast & Brunch',
+    rating: 4.8,
+    orders: 228,
+    image: 'https://images.unsplash.com/photo-1525351484163-7529414344d8?w=600&auto=format&fit=crop&q=80',
+    cafeId: 'cafe-002',
+    cafeName: 'The Daily Grind Roasters',
+    cafeIcon: '🫘',
+    cafeLocation: 'Koramangala, Bangalore',
+    venueType: 'Direct Roastery',
+    bestTag: '🥑 Top Healthy Brunch Pick',
+    recommendationReason: 'Sourdough naturally fermented in-house using an 8-year-old starter paired with farm eggs.',
+    tags: ['Avocado', 'Sourdough', 'Brunch', 'Healthy']
+  },
+  {
+    itemId: 'item-exp-03',
+    name: 'Spanish Saffron Iced Shakerato',
+    description: 'Double ristretto shaken over crushed ice with sweetened condensed milk and infused Kashmiri saffron.',
+    price: 280,
+    category: 'Cold Beverages',
+    rating: 4.85,
+    orders: 195,
+    image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?w=600&auto=format&fit=crop&q=80',
+    cafeId: 'cafe-001',
+    cafeName: 'Brew Haven Cafe',
+    cafeIcon: '☕',
+    cafeLocation: 'Bandra West, Mumbai',
+    venueType: 'Artisanal Cafe',
+    bestTag: '✨ Bestselling Chilled Coffee',
+    recommendationReason: 'Velvety micro-foam with genuine GI-tagged Pampore saffron threads.',
+    tags: ['Iced Coffee', 'Saffron', 'Cold Brew', 'Sweet']
+  },
+  {
+    itemId: 'item-exp-04',
+    name: 'Kyoto Ceremonial Uji Matcha Latte',
+    description: 'First-harvest shade-grown green tea powder from Uji, Kyoto, hand-whisked with steamed oat milk.',
+    price: 310,
+    category: 'Specialty Beverages',
+    rating: 4.9,
+    orders: 174,
+    image: 'https://images.unsplash.com/photo-1536256263959-770b48d82b0a?w=600&auto=format&fit=crop&q=80',
+    cafeId: 'cafe-003',
+    cafeName: 'Velvet Bean Lounge',
+    cafeIcon: '🍸',
+    cafeLocation: 'Hauz Khas Village, New Delhi',
+    venueType: 'Evening Lounge',
+    bestTag: '🍵 Highest Rated Matcha',
+    recommendationReason: 'Whisked with bamboo chasen for rich umami depth without artificial sweetener.',
+    tags: ['Matcha', 'Vegan', 'Superfood', 'Healthy']
+  },
+  {
+    itemId: 'item-exp-05',
+    name: 'Affogato al Caffè Classico',
+    description: 'Madagascar vanilla bean gelato drowned in a piping hot double ristretto espresso shot.',
+    price: 240,
+    category: 'Desserts & Pairings',
+    rating: 4.75,
+    orders: 160,
+    image: 'https://images.unsplash.com/photo-1594911772125-07fc7a2d8d9f?w=600&auto=format&fit=crop&q=80',
+    cafeId: 'cafe-001',
+    cafeName: 'Brew Haven Cafe',
+    cafeIcon: '☕',
+    cafeLocation: 'Bandra West, Mumbai',
+    venueType: 'Artisanal Cafe',
+    bestTag: '🍨 Best Gelato & Coffee Fusion',
+    recommendationReason: 'Contrast of thermal textures: freezing artisanal gelato meeting scalding crema.',
+    tags: ['Affogato', 'Gelato', 'Espresso', 'Dessert']
+  },
+  {
+    itemId: 'item-exp-06',
+    name: 'Truffle Mushroom & Gruyère Toastie',
+    description: 'Slow-sauteed wild shiitake and button mushrooms with white truffle essence and melted Swiss Gruyère on country loaf.',
+    price: 360,
+    category: 'Savoury Gourmet',
+    rating: 4.88,
+    orders: 142,
+    image: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=600&auto=format&fit=crop&q=80',
+    cafeId: 'cafe-002',
+    cafeName: 'The Daily Grind Roasters',
+    cafeIcon: '🫘',
+    cafeLocation: 'Koramangala, Bangalore',
+    venueType: 'Direct Roastery',
+    bestTag: '🥪 Best Gourmet Toastie',
+    recommendationReason: 'Crisped with cultured butter on cast iron for the ultimate cheese pull.',
+    tags: ['Truffle', 'Sourdough', 'Cheese', 'Sandwich']
+  }
+];
+
 

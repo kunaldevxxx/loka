@@ -23,18 +23,22 @@ adminRouter.get('/admin/cafes', (_req: AuthenticatedRequest, res: Response) => {
   return res.status(200).json({ cafes: venues });
 });
 
-// 2. POST /admin/cafes: Creates venue from identity/theme and creates venue QR. cafeId + name required
+// 2. POST /admin/cafes: Creates venue from identity/theme and creates venue QR.
 adminRouter.post('/admin/cafes', (req: AuthenticatedRequest, res: Response) => {
   const { cafeId, name, tagline, venueType, icon, location, phone, defaultTableId, specialtyItemIds, theme } = req.body;
 
-  if (!cafeId || !name) {
-    return res.status(400).json({ error: 'cafeId and name are required' });
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Venue name is required' });
   }
+
+  const generatedId = (cafeId && cafeId.trim())
+    ? cafeId.trim()
+    : `cafe-${name.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 16)}-${Math.random().toString(36).substring(2, 6)}`;
 
   try {
     const newCafe = store.createCafe({
-      cafeId,
-      name,
+      cafeId: generatedId,
+      name: name.trim(),
       tagline,
       venueType,
       icon,
@@ -83,7 +87,7 @@ adminRouter.get('/admin/cafes/:cafeId/menu', (req: AuthenticatedRequest, res: Re
   });
 });
 
-// 5. POST /admin/cafes/:cafeId/menu: Creates menu item. Requires itemId, name, price, category. Recalculates QR.
+// 5. POST /admin/cafes/:cafeId/menu: Creates menu item. Recalculates QR.
 adminRouter.post('/admin/cafes/:cafeId/menu', (req: AuthenticatedRequest, res: Response) => {
   const cafeId = req.params.cafeId;
   const cafe = store.getCafeById(cafeId);
@@ -106,25 +110,29 @@ adminRouter.post('/admin/cafes/:cafeId/menu', (req: AuthenticatedRequest, res: R
     recommendationReason
   } = req.body;
 
-  if (!itemId || !name || price === undefined || !category) {
-    return res.status(400).json({ error: 'itemId, name, price, and category are required' });
+  if (!name || !name.trim() || price === undefined || !category) {
+    return res.status(400).json({ error: 'name, price, and category are required' });
   }
+
+  const generatedItemId = (itemId && itemId.trim())
+    ? itemId.trim()
+    : `item-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`;
 
   try {
     const newItem = store.createMenuItem({
-      itemId,
+      itemId: generatedItemId,
       cafeId,
-      name,
+      name: name.trim(),
       price: Number(price),
       category,
       available,
-      tags,
-      image,
-      description,
-      sizes,
-      milkOptions,
-      addOns,
-      recommendationReason
+      tags: Array.isArray(tags) ? tags : [],
+      image: image || 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&auto=format&fit=crop&q=80',
+      description: description || '',
+      sizes: Array.isArray(sizes) ? sizes : [],
+      milkOptions: Array.isArray(milkOptions) ? milkOptions : [],
+      addOns: Array.isArray(addOns) ? addOns : [],
+      recommendationReason: recommendationReason || ''
     });
 
     const activeQR = store.getQRCode(cafeId);

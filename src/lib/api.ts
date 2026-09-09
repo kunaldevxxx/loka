@@ -273,15 +273,27 @@ export const api = {
     return request<{ users: User[] }>(`/api/admin/users${qs ? `?${qs}` : ''}`);
   },
 
-  createCafe: (data: Partial<Cafe>) =>
-    request<Cafe>('/api/admin/cafes', {
+  createCafe: (data: Partial<Cafe> & { name: string }) =>
+    request<{ cafe: Cafe; qr?: any }>('/api/admin/cafes', {
       method: 'POST',
       body: JSON.stringify(data)
     }),
 
   updateCafe: (cafeId: string, data: Partial<Cafe>) =>
     request<Cafe>(`/api/admin/cafes/${encodeURIComponent(cafeId)}`, {
-      method: 'PUT',
+      method: 'PATCH',
       body: JSON.stringify(data)
-    })
+    }),
+
+  createMenuItem: (cafeId: string, itemData: Partial<MenuItem> & { name: string; price: number; category: string }) =>
+    request<{ item: MenuItem; activeQR?: any }>(`/api/admin/cafes/${encodeURIComponent(cafeId)}/menu`, {
+      method: 'POST',
+      body: JSON.stringify(itemData)
+    }),
+
+  getAdminCafeMenu: (cafeId: string) =>
+    request<{ cafe: Cafe; items: MenuItem[]; qr?: any }>(`/api/admin/cafes/${encodeURIComponent(cafeId)}/menu`),
+
+  getAdminCafes: () =>
+    request<{ cafes: (Cafe & { menuItemCount?: number; activeQR?: any })[] }>('/api/admin/cafes')
 };

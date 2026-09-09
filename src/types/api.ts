@@ -55,6 +55,25 @@ export interface MenuItem {
   recommendationReason?: string;
 }
 
+export interface ExploreDish {
+  itemId: string;
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  rating: number;
+  orders: number;
+  image: string;
+  cafeId: string;
+  cafeName: string;
+  cafeIcon: string;
+  cafeLocation: string;
+  venueType: string;
+  bestTag: string;
+  recommendationReason: string;
+  tags: string[];
+}
+
 export interface RecentOrder {
   dishId: string;
   dishName: string;

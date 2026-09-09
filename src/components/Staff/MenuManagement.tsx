@@ -2,10 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../lib/api';
 import { MenuItem } from '../../types/api';
-import { Coffee, Plus, Trash2, Check, X, Search, DollarSign } from 'lucide-react';
+import { Coffee, Plus, Trash2, Check, X, Search, DollarSign, Store, Award } from 'lucide-react';
 
 export const MenuManagement: React.FC = () => {
-  const { currentCafe, showToast } = useApp();
+  const {
+    currentCafe,
+    allCafes,
+    setCurrentCafe,
+    isSupport,
+    setIsVenueOnboardingOpen,
+    showToast
+  } = useApp();
   const [items, setItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -16,6 +23,7 @@ export const MenuManagement: React.FC = () => {
   const [newCategory, setNewCategory] = useState('Hot Coffee');
   const [newPrice, setNewPrice] = useState('240');
   const [newDescription, setNewDescription] = useState('');
+  const [newRecommendationReason, setNewRecommendationReason] = useState('');
   const [newImage, setNewImage] = useState(
     'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&auto=format&fit=crop&q=80'
   );
@@ -50,26 +58,45 @@ export const MenuManagement: React.FC = () => {
     showToast('Price updated');
   };
 
-  const handleAddNewItem = (e: React.FormEvent) => {
+  const handleAddNewItem = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!newName.trim() || !currentCafe) return;
+
     const created: MenuItem = {
       itemId: `item-custom-${Date.now()}`,
-      name: newName,
+      name: newName.trim(),
       category: newCategory,
       price: parseFloat(newPrice) || 200,
-      description: newDescription,
+      description: newDescription.trim() || 'Freshly prepared specialty dish.',
       image: newImage,
       rating: 4.9,
       orders: 0,
-      tags: ['New', 'Chef Special'],
+      tags: ['New', 'Chef Special', newCategory],
+      recommendationReason: newRecommendationReason.trim() || undefined,
       available: true
     };
 
-    setItems((prev) => [created, ...prev]);
-    showToast(`Added ${newName} to cafe menu`);
+    try {
+      await api.createMenuItem(currentCafe.cafeId, {
+        name: created.name,
+        category: created.category,
+        price: created.price,
+        description: created.description,
+        image: created.image,
+        recommendationReason: created.recommendationReason,
+        tags: created.tags
+      });
+      loadMenu();
+    } catch (err: any) {
+      console.warn('Backend unavailable, using local state for new item:', err);
+      setItems((prev) => [created, ...prev]);
+    }
+
+    showToast(`Added "${newName}" to ${currentCafe.name} menu`);
     setShowAddModal(false);
     setNewName('');
     setNewDescription('');
+    setNewRecommendationReason('');
   };
 
   const handleDeleteItem = (itemId: string) => {
@@ -85,6 +112,39 @@ export const MenuManagement: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      {/* Support Venue Switcher & Onboarding Shortcut */}
+      {isSupport && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/20 shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <Store className="w-4 h-4 text-blue-500 flex-shrink-0" />
+            <span className="text-xs font-bold text-blue-600 dark:text-blue-400">Managing Menu for Venue:</span>
+            <select
+              value={currentCafe?.cafeId}
+              onChange={(e) => {
+                const selected = allCafes.find((c) => c.cafeId === e.target.value);
+                if (selected) setCurrentCafe(selected);
+              }}
+              className="bg-[var(--card)] font-bold text-xs text-[var(--card-foreground)] px-3 py-1.5 rounded-xl border border-[var(--border)] focus:outline-none cursor-pointer"
+            >
+              {allCafes.map((c) => (
+                <option key={c.cafeId} value={c.cafeId}>
+                  {c.name} ({c.venueType})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsVenueOnboardingOpen(true)}
+            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-95 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Onboard New Venue</span>
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--border)]">
         <div>
@@ -110,7 +170,7 @@ export const MenuManagement: React.FC = () => {
 
           <button
             onClick={() => setShowAddModal(true)}
-            className="px-4 py-2 rounded-xl text-xs font-bold text-white flex items-center gap-1.5 shadow-xs"
+            className="px-4 py-2 rounded-xl text-xs font-bold text-white flex items-center gap-1.5 shadow-xs cursor-pointer"
             style={{ backgroundColor: 'var(--primary)' }}
           >
             <Plus className="w-4 h-4" />
@@ -285,22 +345,56 @@ export const MenuManagement: React.FC = () => {
 
               <div>
                 <label className="block font-bold text-[var(--muted-foreground)] mb-1">
-                  Image URL
+                  Why It's Ranked Best Here (Chef Recommendation Reason)
                 </label>
+                <input
+                  type="text"
+                  value={newRecommendationReason}
+                  onChange={(e) => setNewRecommendationReason(e.target.value)}
+                  placeholder="e.g. Pulled fresh daily from deck oven with French cultured butter..."
+                  className="w-full p-2.5 rounded-xl border border-[var(--border)] bg-[var(--muted)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-[var(--muted-foreground)] mb-1">
+                  Dish Photo Presets
+                </label>
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 mb-1.5">
+                  {[
+                    { label: 'Latte', url: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=600&auto=format&fit=crop&q=80' },
+                    { label: 'Chemex', url: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&auto=format&fit=crop&q=80' },
+                    { label: 'Croissant', url: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=600&auto=format&fit=crop&q=80' },
+                    { label: 'Avocado', url: 'https://images.unsplash.com/photo-1525351484163-7529414344d8?w=600&auto=format&fit=crop&q=80' },
+                    { label: 'Cheesecake', url: 'https://images.unsplash.com/photo-1533134242443-d4fd215305ad?w=600&auto=format&fit=crop&q=80' },
+                    { label: 'Matcha', url: 'https://images.unsplash.com/photo-1536256263959-770b48d82b0a?w=600&auto=format&fit=crop&q=80' }
+                  ].map((p) => (
+                    <button
+                      key={p.label}
+                      type="button"
+                      onClick={() => setNewImage(p.url)}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                        newImage === p.url ? 'bg-[var(--primary)] text-white border-transparent shadow-2xs' : 'border-[var(--border)] bg-[var(--card)]'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
                 <input
                   type="url"
                   value={newImage}
                   onChange={(e) => setNewImage(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-[var(--border)] bg-[var(--muted)]/50"
+                  className="w-full p-2.5 rounded-xl border border-[var(--border)] bg-[var(--muted)]/50 text-[11px]"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full py-3 rounded-xl text-xs font-bold text-white shadow-xs"
+                className="w-full py-3 rounded-xl text-xs font-bold text-white shadow-xs cursor-pointer hover:opacity-95 transition-all"
                 style={{ backgroundColor: 'var(--primary)' }}
               >
-                Add Item to Menu
+                Add Item to Venue Menu
               </button>
             </form>
           </div>

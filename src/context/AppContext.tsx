@@ -49,6 +49,8 @@ interface AppContextType {
   currentUser: User | null;
   isStaffUser: boolean;
   isManager: boolean;
+  isVenueManager: boolean;
+  isSupport: boolean;
   isChef: boolean;
   isCustomer: boolean;
   setCurrentUser: (user: User | null) => void;
@@ -90,6 +92,8 @@ interface AppContextType {
   setIsAuthModalOpen: (open: boolean) => void;
   isPaymentModalOpen: boolean;
   setIsPaymentModalOpen: (open: boolean) => void;
+  isVenueOnboardingOpen: boolean;
+  setIsVenueOnboardingOpen: (open: boolean) => void;
 
   // Toast notifications
   toastMessage: string | null;
@@ -98,6 +102,7 @@ interface AppContextType {
   // Refresh trigger
   refreshTrigger: number;
   triggerRefresh: () => void;
+  reloadCafes: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -164,6 +169,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [isComplaintModalOpen, setIsComplaintModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isVenueOnboardingOpen, setIsVenueOnboardingOpenState] = useState(false);
 
   // Toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -176,10 +182,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }, 4000);
   };
 
-  const isManager = Boolean(currentUser && ['manager', 'support'].includes(currentUser.role));
+  const isSupport = Boolean(currentUser && currentUser.role === 'support');
+  const isVenueManager = Boolean(currentUser && currentUser.role === 'manager');
   const isChef = Boolean(currentUser && currentUser.role === 'chef');
+  const isManager = isVenueManager || isSupport;
   const isStaffUser = isManager || isChef;
   const isCustomer = !currentUser || currentUser.role === 'customer';
+
+  const setIsVenueOnboardingOpen = (open: boolean) => {
+    if (open && !isSupport) {
+      showToast('Only Global Support administrators can onboard new venues.');
+      return;
+    }
+    setIsVenueOnboardingOpenState(open);
+  };
+
+  const reloadCafes = async () => {
+    try {
+      const res = await api.getAllCafes();
+      if (res.cafes && res.cafes.length > 0) {
+        setAllCafes(res.cafes);
+      }
+    } catch (err) {
+      console.warn('Failed to reload cafes:', err);
+    }
+  };
 
   const staffViews: ActiveView[] = ['staff_dashboard', 'kds', 'order_management', 'analytics', 'complaints', 'menu_management'];
   const managerOnlyViews: ActiveView[] = ['staff_dashboard', 'analytics', 'complaints', 'menu_management', 'order_management'];
@@ -215,6 +242,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setActiveViewState('menu');
     }
   }, [currentUser?.role]);
+
+  // Enforce cafe scoping: Managers and Chefs are locked to their assigned cafe
+  useEffect(() => {
+    if ((isVenueManager || isChef) && currentUser?.cafeId) {
+      const assignedCafe = allCafes.find((c) => c.cafeId === currentUser.cafeId);
+      if (assignedCafe && assignedCafe.cafeId !== currentCafe.cafeId) {
+        setCurrentCafeState(assignedCafe);
+        if (assignedCafe.defaultTableId) {
+          setTableId(assignedCafe.defaultTableId);
+        }
+      }
+    }
+  }, [currentUser?.role, currentUser?.cafeId, allCafes, isVenueManager, isChef]);
 
   const triggerRefresh = () => setRefreshTrigger((c) => c + 1);
 
@@ -340,6 +380,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [currentUser]);
 
   const setCurrentCafe = (cafe: Cafe) => {
+    // Venue scoping: Managers and Chefs cannot switch away from their assigned venue
+    if ((isVenueManager || isChef) && currentUser?.cafeId && currentUser.cafeId !== cafe.cafeId) {
+      showToast(`Access restricted: Your staff role is locked to ${currentCafe.name}`);
+      return;
+    }
     setCurrentCafeState(cafe);
     if (cafe.defaultTableId) {
       setTableId(cafe.defaultTableId);
@@ -461,6 +506,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         currentUser,
         isStaffUser,
         isManager,
+        isVenueManager,
+        isSupport,
         isChef,
         isCustomer,
         setCurrentUser,
@@ -494,10 +541,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setIsAuthModalOpen,
         isPaymentModalOpen,
         setIsPaymentModalOpen,
+        isVenueOnboardingOpen,
+        setIsVenueOnboardingOpen,
         toastMessage,
         showToast,
         refreshTrigger,
-        triggerRefresh
+        triggerRefresh,
+        reloadCafes
       }}
     >
       {children}
