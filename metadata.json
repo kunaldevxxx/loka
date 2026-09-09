@@ -1,0 +1,6 @@
+{
+  "name": "Loka Cafe Platform",
+  "description": "Smart cafe ordering and discovery platform with personalized menu, 4-step live order tracker, voice ordering, staff KDS, and analytics.",
+  "requestFramePermissions": ["microphone", "camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
