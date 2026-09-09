@@ -4,8 +4,9 @@ import { authenticateStaff, requireRole, AuthenticatedRequest } from '../lib/aut
 
 export const adminRouter = Router();
 
-// All admin routes require 'support' role
-adminRouter.use(authenticateStaff, requireRole(['support']));
+// Only /admin routes require support access. Scoping the middleware prevents
+// this router from intercepting unrelated API paths mounted after it.
+adminRouter.use('/admin', authenticateStaff, requireRole(['support']));
 
 // 1. GET /admin/cafes: All venues with menuItemCount
 adminRouter.get('/admin/cafes', (_req: AuthenticatedRequest, res: Response) => {

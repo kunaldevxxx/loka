@@ -10,7 +10,6 @@ export const AuthModal: React.FC = () => {
   const [email, setEmail] = useState('user@example.com');
   const [password, setPassword] = useState('securePassword123');
   const [name, setName] = useState('John Doe');
-  const [role, setRole] = useState<'customer' | 'manager' | 'chef' | 'support'>('customer');
   const [loading, setLoading] = useState(false);
 
   if (!isAuthModalOpen) return null;
@@ -27,10 +26,10 @@ export const AuthModal: React.FC = () => {
         showToast(`Welcome back, ${res.user.name}!`);
         setIsAuthModalOpen(false);
       } else {
-        const res = await api.register({ email, password, name, role });
+        const res = await api.register({ email, password, name });
         localStorage.setItem('loka_auth_token', res.token);
         setCurrentUser(res.user);
-        showToast(`Account created as ${role}!`);
+        showToast('Customer account created!');
         setIsAuthModalOpen(false);
       }
     } catch (err: any) {
@@ -60,17 +59,14 @@ export const AuthModal: React.FC = () => {
       setEmail('user@example.com');
       setPassword('securePassword123');
       setName('John Doe');
-      setRole('customer');
     } else if (type === 'manager') {
       setEmail('manager@cafe.com');
       setPassword('managerPassword123');
       setName('Aarav Sharma');
-      setRole('manager');
     } else {
       setEmail('chef@cafe.com');
       setPassword('chefPassword123');
       setName('Chef Maria Rossi');
-      setRole('chef');
     }
   };
 
@@ -146,21 +142,6 @@ export const AuthModal: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block font-bold text-[var(--muted-foreground)] uppercase tracking-wider mb-1">
-                  Role
-                </label>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as any)}
-                  className="w-full p-2 rounded-xl border border-[var(--border)] bg-[var(--muted)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--primary)] text-xs font-semibold"
-                >
-                  <option value="customer">Customer</option>
-                  <option value="manager">Manager</option>
-                  <option value="chef">Chef / Barista</option>
-                  <option value="support">Support</option>
-                </select>
-              </div>
             </>
           )}
 

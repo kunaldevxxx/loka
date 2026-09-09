@@ -211,7 +211,7 @@ export const StaffDashboard: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveView('menu_manage')}
+            onClick={() => setActiveView('menu_management')}
             className="w-full p-3.5 rounded-2xl border border-[var(--border)] hover:bg-[var(--muted)] transition-colors flex items-center justify-between text-xs font-bold"
           >
             <span className="flex items-center gap-2">

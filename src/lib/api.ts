@@ -5,6 +5,7 @@ import {
   Complaint,
   ComplaintInput,
   ItemAnalyticsItem,
+  MenuItem,
   MenuResponse,
   Order,
   OrderItemInput,
@@ -245,6 +246,15 @@ export const api = {
     const url = `/api/staff/orders?cafeId=${encodeURIComponent(cafeId)}${status ? `&status=${encodeURIComponent(status)}` : ''}`;
     return request<{ orders: Order[] }>(url);
   },
+
+  getStaffMenu: (cafeId: string = 'cafe-001') =>
+    request<{ items: MenuItem[] }>(`/api/staff/menu?cafeId=${encodeURIComponent(cafeId)}`),
+
+  setMenuAvailability: (itemId: string, available: boolean) =>
+    request<MenuItem>(`/api/staff/menu/${encodeURIComponent(itemId)}/availability`, {
+      method: 'PATCH',
+      body: JSON.stringify({ available })
+    }),
 
   // Admin
   getUsers: (cafeId?: string, role?: string) => {

@@ -45,6 +45,7 @@ interface AppContextType {
 
   // User / Auth
   currentUser: User | null;
+  isStaffUser: boolean;
   setCurrentUser: (user: User | null) => void;
   logout: () => void;
 
@@ -112,7 +113,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   });
   const [sessionToken, setSessionToken] = useState<string>('');
 
-  const [activeView, setActiveView] = useState<ActiveView>('menu');
+  const [activeView, setActiveViewState] = useState<ActiveView>('menu');
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('loka_user');
     return saved ? JSON.parse(saved) : null;
@@ -142,6 +143,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setTimeout(() => {
       setToastMessage((prev) => (prev === msg ? null : prev));
     }, 4000);
+  };
+
+  const isStaffUser = Boolean(currentUser && ['manager', 'chef', 'support'].includes(currentUser.role));
+  const staffViews: ActiveView[] = ['staff_dashboard', 'kds', 'order_management', 'analytics', 'menu_management'];
+  const setActiveView = (view: ActiveView) => {
+    if (staffViews.includes(view) && !isStaffUser) {
+      showToast('Staff sign-in is required to access operations tools.');
+      return;
+    }
+    setActiveViewState(view);
   };
 
   const triggerRefresh = () => setRefreshTrigger((c) => c + 1);
@@ -384,6 +395,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         activeView,
         setActiveView,
         currentUser,
+        isStaffUser,
         setCurrentUser,
         logout,
         cart,

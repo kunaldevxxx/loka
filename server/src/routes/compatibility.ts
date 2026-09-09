@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { store } from '../db/store';
 import { sarvamClient, normalizeLanguageCode } from '../lib/sarvam';
+import { authenticateStaff, requireRole, AuthenticatedRequest } from '../lib/auth';
 
 export const compatibilityRouter = Router();
 
@@ -26,10 +27,13 @@ compatibilityRouter.get('/session/:token', (req: Request, res: Response) => {
 });
 
 // Order status update alias
-compatibilityRouter.put('/orders/:id', (req: Request, res: Response) => {
+compatibilityRouter.put('/orders/:id', authenticateStaff, requireRole(['manager', 'chef', 'support']), (req: AuthenticatedRequest, res: Response) => {
   const order = store.getOrderById(req.params.id);
   if (!order) {
     return res.status(404).json({ error: 'Order not found' });
+  }
+  if (req.user!.role !== 'support' && req.user!.cafeId !== order.cafeId) {
+    return res.status(403).json({ error: 'Cannot modify orders belonging to another venue' });
   }
 
   const { kitchenStatus } = req.body;
@@ -46,10 +50,13 @@ compatibilityRouter.put('/orders/:id', (req: Request, res: Response) => {
 });
 
 // Cancel Order
-compatibilityRouter.delete('/orders/:id', (req: Request, res: Response) => {
+compatibilityRouter.delete('/orders/:id', authenticateStaff, requireRole(['manager', 'support']), (req: AuthenticatedRequest, res: Response) => {
   const order = store.getOrderById(req.params.id);
   if (!order) {
     return res.status(404).json({ error: 'Order not found' });
+  }
+  if (req.user!.role !== 'support' && req.user!.cafeId !== order.cafeId) {
+    return res.status(403).json({ error: 'Cannot cancel orders belonging to another venue' });
   }
 
   const { reason = 'Customer cancellation' } = req.body || {};
@@ -78,13 +85,16 @@ compatibilityRouter.delete('/orders/:id', (req: Request, res: Response) => {
 });
 
 // Resolve complaint by POST
-compatibilityRouter.post('/complaints/:id/resolve', (req: Request, res: Response) => {
+compatibilityRouter.post('/complaints/:id/resolve', authenticateStaff, requireRole(['manager', 'chef', 'support']), (req: AuthenticatedRequest, res: Response) => {
   const complaint = store.complaints.find((c) => c.complaintId === req.params.id);
   if (!complaint) {
     return res.status(404).json({ error: 'Complaint not found' });
   }
+  if (req.user!.role !== 'support' && req.user!.cafeId !== complaint.cafeId) {
+    return res.status(403).json({ error: 'Cannot resolve complaints for another venue' });
+  }
 
-  const resolved = store.resolveComplaint(complaint.complaintId, 'Manager on Duty');
+  const resolved = store.resolveComplaint(complaint.complaintId, `${req.user!.name} (${req.user!.role})`);
   return res.status(200).json({ success: true, complaintId: complaint.complaintId, complaint: resolved });
 });
 
@@ -322,8 +332,11 @@ compatibilityRouter.post('/voice-assist/transcribe', async (req: Request, res: R
 });
 
 // Staff Overview
-compatibilityRouter.get('/staff/overview', (req: Request, res: Response) => {
+compatibilityRouter.get('/staff/overview', authenticateStaff, requireRole(['manager', 'chef', 'support']), (req: AuthenticatedRequest, res: Response) => {
   const cafeId = (req.query.cafeId as string) || 'cafe-001';
+  if (req.user!.role !== 'support' && req.user!.cafeId !== cafeId) {
+    return res.status(403).json({ error: 'Access restricted to your venue' });
+  }
   const orders = store.getOrders(cafeId).filter((o) => o.paymentStatus === 'paid');
   const complaints = store.getComplaints(cafeId, 'open');
 
@@ -337,8 +350,11 @@ compatibilityRouter.get('/staff/overview', (req: Request, res: Response) => {
 });
 
 // Analytics
-compatibilityRouter.get('/analytics', (req: Request, res: Response) => {
+compatibilityRouter.get('/analytics', authenticateStaff, requireRole(['manager', 'support']), (req: AuthenticatedRequest, res: Response) => {
   const cafeId = (req.query.cafeId as string) || 'cafe-001';
+  if (req.user!.role !== 'support' && req.user!.cafeId !== cafeId) {
+    return res.status(403).json({ error: 'Access restricted to your venue' });
+  }
   const orders = store.getOrders(cafeId).filter((o) => o.paymentStatus === 'paid');
   const totalRevenue = orders.reduce((sum, o) => sum + o.total, 0);
 
@@ -354,8 +370,11 @@ compatibilityRouter.get('/analytics', (req: Request, res: Response) => {
 });
 
 // Sales analytics
-compatibilityRouter.get('/analytics/sales', (req: Request, res: Response) => {
+compatibilityRouter.get('/analytics/sales', authenticateStaff, requireRole(['manager', 'support']), (req: AuthenticatedRequest, res: Response) => {
   const cafeId = (req.query.cafeId as string) || 'cafe-001';
+  if (req.user!.role !== 'support' && req.user!.cafeId !== cafeId) {
+    return res.status(403).json({ error: 'Access restricted to your venue' });
+  }
   const orders = store.getOrders(cafeId).filter((o) => o.paymentStatus === 'paid');
   const totalSales = orders.reduce((sum, o) => sum + o.total, 0);
 
@@ -373,8 +392,11 @@ compatibilityRouter.get('/analytics/sales', (req: Request, res: Response) => {
 });
 
 // Item analytics
-compatibilityRouter.get('/analytics/items', (req: Request, res: Response) => {
+compatibilityRouter.get('/analytics/items', authenticateStaff, requireRole(['manager', 'support']), (req: AuthenticatedRequest, res: Response) => {
   const cafeId = (req.query.cafeId as string) || 'cafe-001';
+  if (req.user!.role !== 'support' && req.user!.cafeId !== cafeId) {
+    return res.status(403).json({ error: 'Access restricted to your venue' });
+  }
   const items = store.getMenuItems(cafeId);
 
   return res.status(200).json({
@@ -389,7 +411,7 @@ compatibilityRouter.get('/analytics/items', (req: Request, res: Response) => {
 });
 
 // Admin Users List
-compatibilityRouter.get('/admin/users', (req: Request, res: Response) => {
+compatibilityRouter.get('/admin/users', authenticateStaff, requireRole(['support']), (req: AuthenticatedRequest, res: Response) => {
   const role = req.query.role as string;
   const cafeId = req.query.cafeId as string;
 

@@ -9,6 +9,33 @@ import {
 
 export const staffRouter = Router();
 
+// Public self-service registration is intentionally customer-only. Staff roles
+// are provisioned by an administrator and must never be selected by a client.
+staffRouter.post('/auth/register', (req, res) => {
+  const { email, password, name } = req.body;
+  if (!email || !password || !name) {
+    return res.status(400).json({ error: 'Name, email, and password are required' });
+  }
+  if (store.getUserByEmail(email)) {
+    return res.status(409).json({ error: 'An account with this email already exists' });
+  }
+
+  const user = store.createUser({
+    id: `user-${Date.now()}`,
+    email,
+    password,
+    name,
+    role: 'customer',
+    cafeId: null,
+    createdAt: new Date().toISOString(),
+    loginCount: 1,
+    lastLoginAt: new Date().toISOString()
+  });
+  const token = generateStaffToken(user);
+  const { password: _, ...userWithoutPass } = user;
+  return res.status(201).json({ token, user: userWithoutPass, cafe: null });
+});
+
 // 1. Staff Login (Email & Password)
 staffRouter.post('/auth/login', (req, res) => {
   const { email, password } = req.body;
@@ -40,14 +67,14 @@ staffRouter.post('/auth/google', (req, res) => {
     return res.status(400).json({ error: 'Google accessToken is required' });
   }
 
-  // Find or provision support user for Google login
+  // Find or provision a customer. OAuth must not grant staff privileges.
   let user = store.users.find((u) => u.googleId === accessToken || u.email.includes('google'));
   if (!user) {
     user = store.createUser({
       id: `user-google-${Date.now()}`,
       email: `google.user.${Date.now().toString().slice(-4)}@loka.cafe`,
       name: 'Google Staff Member',
-      role: 'support', // New Google users are created as support as per spec
+      role: 'customer',
       cafeId: null,
       googleId: accessToken,
       createdAt: new Date().toISOString(),

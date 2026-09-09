@@ -10,7 +10,6 @@ import {
   Sun,
   User as UserIcon,
   ChefHat,
-  Terminal,
   Store,
   MapPin,
   Sparkles
@@ -30,6 +29,7 @@ export const TopBar: React.FC = () => {
     setIsQRModalOpen,
     setIsAuthModalOpen,
     currentUser,
+    isStaffUser,
     logout,
     activeOrderId
   } = useApp();
@@ -134,29 +134,19 @@ export const TopBar: React.FC = () => {
               <span>Live Order</span>
             </button>
           )}
-          <button
-            onClick={() => setActiveView('kds')}
-            className={`px-3.5 py-1.5 rounded-full transition-all duration-200 flex items-center gap-1.5 ${
-              isStaffView
-                ? 'bg-[var(--accent)] text-[var(--accent-foreground)] shadow-md font-bold'
-                : 'text-[var(--muted-foreground)] hover:text-[var(--card-foreground)] hover:bg-[var(--card)]/50'
-            }`}
-          >
-            <ChefHat className="w-3.5 h-3.5" />
-            <span>Staff / KDS</span>
-          </button>
-          <button
-            onClick={() => setActiveView('api_inspector')}
-            className={`px-3 py-1.5 rounded-full transition-all duration-200 flex items-center gap-1 ${
-              activeView === 'api_inspector'
-                ? 'bg-zinc-800 text-zinc-100 shadow-md font-bold'
-                : 'text-[var(--muted-foreground)] hover:text-[var(--card-foreground)] hover:bg-[var(--card)]/50'
-            }`}
-            title="API Endpoints Inspector"
-          >
-            <Terminal className="w-3.5 h-3.5" />
-            <span>API Specs</span>
-          </button>
+          {isStaffUser && (
+            <button
+              onClick={() => setActiveView('kds')}
+              className={`px-3.5 py-1.5 rounded-full transition-all duration-200 flex items-center gap-1.5 ${
+                isStaffView
+                  ? 'bg-[var(--accent)] text-[var(--accent-foreground)] shadow-md font-bold'
+                  : 'text-[var(--muted-foreground)] hover:text-[var(--card-foreground)] hover:bg-[var(--card)]/50'
+              }`}
+            >
+              <ChefHat className="w-3.5 h-3.5" />
+              <span>Staff / KDS</span>
+            </button>
+          )}
         </nav>
 
         {/* Right Action Icons */}

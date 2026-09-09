@@ -1,11 +1,9 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
-import { Coffee, Store, Clock, ShoppingBag, ChefHat } from 'lucide-react';
+import { Coffee, Store, Clock, ShoppingBag } from 'lucide-react';
 
 export const BottomNav: React.FC = () => {
   const { activeView, setActiveView, cartCount, activeOrderId } = useApp();
-
-  const isStaffActive = ['kds', 'staff_dashboard', 'order_management', 'analytics', 'menu_manage'].includes(activeView);
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 px-3 pb-2 pt-1.5 backdrop-blur-2xl bg-[var(--card)]/90 border-t border-[var(--border)] transition-colors duration-300 shadow-[0_-8px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_-8px_30px_rgba(0,0,0,0.5)]">
@@ -67,17 +65,6 @@ export const BottomNav: React.FC = () => {
           </button>
         )}
 
-        <button
-          onClick={() => setActiveView('kds')}
-          className={`flex flex-col items-center justify-center min-w-[56px] min-h-[48px] py-1 px-2 rounded-2xl transition-all duration-200 ${
-            isStaffActive
-              ? 'bg-[var(--accent)] text-[var(--accent-foreground)] shadow-md font-bold scale-105'
-              : 'text-[var(--muted-foreground)] hover:text-[var(--card-foreground)]'
-          }`}
-        >
-          <ChefHat className="w-5 h-5" />
-          <span className="text-[10px] font-bold mt-0.5">Staff</span>
-        </button>
       </div>
     </nav>
   );

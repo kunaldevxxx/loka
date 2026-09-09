@@ -29,7 +29,7 @@ function AppContent() {
     toastMessage
   } = useApp();
 
-  const isStaffView = ['kds', 'staff_dashboard', 'order_management', 'analytics', 'menu_manage'].includes(
+  const isStaffView = ['kds', 'staff_dashboard', 'order_management', 'analytics', 'menu_management'].includes(
     activeView
   );
 
@@ -48,7 +48,7 @@ function AppContent() {
         {activeView === 'kds' && <KitchenDisplaySystem />}
         {activeView === 'staff_dashboard' && <StaffDashboard />}
         {activeView === 'analytics' && <AnalyticsDashboard />}
-        {activeView === 'menu_manage' && <MenuManagement />}
+        {activeView === 'menu_management' && <MenuManagement />}
       </main>
 
       {/* Customer Floating Quick-Access Bar (Hidden in Staff Views) */}

@@ -23,7 +23,7 @@ export const MenuManagement: React.FC = () => {
   const loadMenu = () => {
     if (!currentCafe) return;
     setLoading(true);
-    api.getMenu(currentCafe.cafeId)
+    api.getStaffMenu(currentCafe.cafeId)
       .then((res) => setItems(res.items))
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
@@ -33,13 +33,14 @@ export const MenuManagement: React.FC = () => {
     loadMenu();
   }, [currentCafe?.cafeId]);
 
-  const handleToggleAvailable = (itemId: string) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.itemId === itemId ? { ...item, available: !item.available } : item
-      )
-    );
-    showToast('Item stock availability updated');
+  const handleToggleAvailable = async (item: MenuItem) => {
+    try {
+      const updated = await api.setMenuAvailability(item.itemId, !item.available);
+      setItems((prev) => prev.map((current) => current.itemId === updated.itemId ? updated : current));
+      showToast(`${updated.name} is now ${updated.available ? 'in stock' : 'sold out'}.`);
+    } catch (err: any) {
+      showToast(err.message || 'Unable to update availability');
+    }
   };
 
   const handleUpdatePrice = (itemId: string, price: number) => {
@@ -173,7 +174,7 @@ export const MenuManagement: React.FC = () => {
 
                     <td className="py-3 px-4">
                       <button
-                        onClick={() => handleToggleAvailable(item.itemId)}
+                        onClick={() => handleToggleAvailable(item)}
                         className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase transition-colors flex items-center gap-1 ${
                           isAvailable
                             ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
