@@ -1,26 +1,27 @@
-# Render Blueprint Specification for Loka Cafe Backend API
+# ==============================================================================
+# Render Blueprint Specification for Loka Cafe Backend API (Go Fiber Engine)
 # Docs: https://render.com/docs/blueprint-spec
+# ==============================================================================
 
 services:
   - type: web
     name: loka-cafe-backend
-    runtime: node
+    runtime: go
     plan: free
     region: oregon
-    buildCommand: npm install && npm run build
-    startCommand: npm start
+    rootDir: server-go
+    buildCommand: go build -o bin/server ./cmd/server
+    startCommand: ./bin/server
     healthCheckPath: /api/health
     envVars:
-      - key: NODE_ENV
-        value: production
       - key: PORT
         value: 10000
+      - key: DATABASE_URL
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ORIGIN
         value: "*"
-      - key: DATABASE_URL
-        sync: false
       - key: SARVAM_API_KEY
         sync: false
       - key: RAZORPAY_KEY_ID

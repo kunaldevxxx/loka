@@ -109,3 +109,29 @@
 }
 
 
+
+/* Designer Specialty Coffee House & Bistro Aesthetic */
+.font-editorial {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+.luxury-card-glow {
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.luxury-card-glow:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 35px -10px rgba(180, 83, 9, 0.12), 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+}
+
+.dark .luxury-card-glow:hover {
+  box-shadow: 0 20px 35px -10px rgba(245, 158, 11, 0.15), 0 1px 3px 0 rgba(0, 0, 0, 0.4);
+}
+
+.tactile-press {
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.tactile-press:active {
+  transform: scale(0.96);
+}

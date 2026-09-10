@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../lib/api';
 import { Order, KitchenStatus } from '../../types/api';
@@ -8,23 +8,34 @@ import {
   Clock,
   CheckCircle2,
   PackageCheck,
-  AlertCircle,
   RefreshCw,
-  Filter,
-  Sparkles,
+  Zap,
+  Volume2,
+  VolumeX,
   Flame,
-  Check
+  Check,
+  Radio,
+  Coffee,
+  Sparkles
 } from 'lucide-react';
+import {
+  isSupabaseConfigured,
+  subscribeToKitchenOrders,
+  playKitchenChime,
+} from '../../lib/supabase';
 
 export const KitchenDisplaySystem: React.FC = () => {
   const { currentCafe, showToast, refreshTrigger, triggerRefresh } = useApp();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('active');
+  const [realtimeStatus, setRealtimeStatus] = useState<'CONNECTING' | 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'UNCONFIGURED' | 'TIMED_OUT'>('CONNECTING');
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [incomingAlert, setIncomingAlert] = useState<{ id: string; table: string } | null>(null);
 
-  const fetchOrders = () => {
+  const fetchOrders = useCallback((silent: boolean = false) => {
     if (!currentCafe) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     api.getStaffOrders(currentCafe.cafeId)
       .then((res) => {
         setOrders(res.orders);
@@ -32,24 +43,97 @@ export const KitchenDisplaySystem: React.FC = () => {
       .catch((err) => {
         console.error('Failed to load kitchen orders', err);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!silent) setLoading(false);
+      });
+  }, [currentCafe?.cafeId]);
+
+  // Map Supabase row back to Order structure if needed
+  const mapSupabaseRowToOrder = (row: any): Order => {
+    return {
+      id: row.id,
+      cafeId: row.cafe_id,
+      deviceId: row.device_id,
+      tableId: row.table_id,
+      items: typeof row.items === 'string' ? JSON.parse(row.items) : (row.items || []),
+      subtotal: row.subtotal,
+      gst: row.gst,
+      loyaltyDiscount: row.loyalty_discount || 0,
+      total: row.total,
+      paymentMethod: row.payment_method || 'upi',
+      paymentStatus: row.payment_status || 'paid',
+      kitchenStatus: row.kitchen_status || 'confirmed',
+      pointsEarned: row.points_earned || 0,
+      confirmationCode: row.confirmation_code || '',
+      isReturningAtOrderTime: row.is_returning || false,
+      confirmedAt: row.created_at || null,
+      statusTimestamps: typeof row.status_timestamps === 'string' ? JSON.parse(row.status_timestamps) : (row.status_timestamps || { created: row.created_at }),
+      createdAt: row.created_at,
+    };
   };
 
+  // Initial fetch and Realtime Subscription setup
   useEffect(() => {
     fetchOrders();
-    const interval = setInterval(fetchOrders, 4000);
-    return () => clearInterval(interval);
-  }, [currentCafe?.cafeId, refreshTrigger]);
+
+    if (!currentCafe) return;
+
+    if (isSupabaseConfigured()) {
+      const sub = subscribeToKitchenOrders(currentCafe.cafeId, {
+        onInsert: (row) => {
+          const newOrder = mapSupabaseRowToOrder(row);
+          if (soundEnabled) {
+            playKitchenChime();
+          }
+          setIncomingAlert({ id: newOrder.id, table: newOrder.tableId });
+          setTimeout(() => setIncomingAlert(null), 6000);
+
+          setOrders((prev) => {
+            if (prev.some((o) => o.id === newOrder.id)) return prev;
+            return [newOrder, ...prev];
+          });
+          showToast(`⚡ Realtime: New ticket #${newOrder.id.slice(-6).toUpperCase()} received!`);
+        },
+        onUpdate: (row) => {
+          const updated = mapSupabaseRowToOrder(row);
+          setOrders((prev) =>
+            prev.map((o) => (o.id === updated.id ? { ...o, ...updated } : o))
+          );
+        },
+        onStatusChange: (status) => {
+          setRealtimeStatus(status as any);
+        },
+      });
+
+      // Low-frequency safety fallback every 30s
+      const fallbackInterval = setInterval(() => fetchOrders(true), 30000);
+
+      return () => {
+        sub.unsubscribe();
+        clearInterval(fallbackInterval);
+      };
+    } else {
+      setRealtimeStatus('UNCONFIGURED');
+      // Graceful fallback to 4s polling when Realtime keys not yet loaded
+      const pollInterval = setInterval(() => fetchOrders(true), 4000);
+      return () => clearInterval(pollInterval);
+    }
+  }, [currentCafe?.cafeId, refreshTrigger, fetchOrders, soundEnabled, showToast]);
 
   const handleUpdateStatus = async (orderId: string, nextStatus: 'confirmed' | 'preparing' | 'ready' | 'collected') => {
     try {
       await api.updateOrderStatus(orderId, nextStatus);
       showToast(`Order #${orderId.slice(-6).toUpperCase()} marked as ${nextStatus.toUpperCase()}`);
-      fetchOrders();
+      fetchOrders(true);
       triggerRefresh();
     } catch (err: any) {
       showToast(err.message || 'Failed to update order status');
     }
+  };
+
+  const handleTestChime = () => {
+    playKitchenChime();
+    showToast('🔔 Kitchen chime played');
   };
 
   const filteredOrders = orders.filter((o) => {
@@ -60,8 +144,42 @@ export const KitchenDisplaySystem: React.FC = () => {
     return o.kitchenStatus === statusFilter;
   });
 
+  const isLiveWebSocket = realtimeStatus === 'SUBSCRIBED';
+
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 py-6 sm:py-8 space-y-6">
+      {/* Incoming Order Flash Banner */}
+      <AnimatePresence>
+        {incomingAlert && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.96 }}
+            className="p-4 rounded-2xl bg-amber-500 text-white shadow-xl flex items-center justify-between gap-4 border-2 border-amber-300 ring-4 ring-amber-500/30"
+          >
+            <div className="flex items-center gap-3">
+              <span className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center font-bold text-xl animate-bounce">
+                🔔
+              </span>
+              <div>
+                <p className="text-xs font-black tracking-wider uppercase text-amber-100">
+                  Instant Ticket Push • Live Pass
+                </p>
+                <h4 className="text-base sm:text-lg font-black tracking-tight">
+                  New Order #{incomingAlert.id.slice(-6).toUpperCase()} landed for {incomingAlert.table}!
+                </h4>
+              </div>
+            </div>
+            <button
+              onClick={() => setIncomingAlert(null)}
+              className="px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-xs font-bold transition-all cursor-pointer"
+            >
+              Acknowledge
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* KDS Header Bar */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 border-b border-[var(--border)]">
         <div className="flex items-center gap-3.5">
@@ -73,20 +191,64 @@ export const KitchenDisplaySystem: React.FC = () => {
               <span className="text-[11px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
                 Back-Of-House Console
               </span>
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className={`w-2 h-2 rounded-full ${isLiveWebSocket ? 'bg-emerald-500 animate-ping' : 'bg-emerald-500'}`} />
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-[var(--foreground)] tracking-tight">
               Kitchen Display System (KDS)
             </h1>
-            <p className="text-xs text-[var(--muted-foreground)] font-medium mt-0.5">
-              {currentCafe?.name} • Live Barista Prep & Pass Station
-            </p>
+            <div className="flex flex-wrap items-center gap-2 mt-1">
+              <p className="text-xs text-[var(--muted-foreground)] font-medium">
+                {currentCafe?.name} • Live Barista Prep & Pass Station
+              </p>
+
+              {/* Supabase Realtime status indicator */}
+              <div
+                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wide uppercase border ${
+                  isLiveWebSocket
+                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                    : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                }`}
+                title={
+                  isLiveWebSocket
+                    ? 'Subscribed to Supabase PostgreSQL Realtime WebSocket'
+                    : 'Realtime WebSocket will auto-connect once VITE_SUPABASE_ANON_KEY is provided; using rapid sync fallback.'
+                }
+              >
+                <Radio className={`w-3 h-3 ${isLiveWebSocket ? 'text-emerald-500 animate-pulse' : 'text-amber-500'}`} />
+                <span>
+                  {isLiveWebSocket ? '⚡ Supabase Realtime: LIVE' : '🔄 Smart Sync (4s Active)'}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Filter controls & Refresh */}
+        {/* Action controls & Audio Toggle */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center bg-[var(--card)] p-1.5 rounded-2xl border border-[var(--border)] text-xs font-bold overflow-x-auto scrollbar-none shadow-xs">
+          {/* Audio Chime Button */}
+          <button
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            className={`px-3 py-2.5 rounded-2xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              soundEnabled
+                ? 'bg-amber-500/15 border-amber-500/30 text-amber-600 dark:text-amber-400'
+                : 'bg-[var(--card)] border-[var(--border)] text-[var(--muted-foreground)]'
+            }`}
+            title={soundEnabled ? 'Order audio chime is ON' : 'Order audio chime is MUTED'}
+          >
+            {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            <span className="hidden sm:inline">{soundEnabled ? 'Chime Active' : 'Chime Off'}</span>
+          </button>
+
+          <button
+            onClick={handleTestChime}
+            className="px-2.5 py-2.5 rounded-2xl bg-[var(--card)] border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] text-xs font-semibold transition-all cursor-pointer"
+            title="Test Kitchen Service Bell"
+          >
+            🛎️ Bell
+          </button>
+
+          {/* Filter tabs */}
+          <div className="flex items-center bg-[var(--card)] p-1 rounded-2xl border border-[var(--border)] text-xs font-bold overflow-x-auto scrollbar-none shadow-xs">
             {[
               { id: 'active', label: 'Active Pipeline' },
               { id: 'confirmed', label: 'Queued' },
@@ -97,7 +259,7 @@ export const KitchenDisplaySystem: React.FC = () => {
               <button
                 key={f.id}
                 onClick={() => setStatusFilter(f.id)}
-                className={`px-3.5 py-2 rounded-xl transition-all whitespace-nowrap cursor-pointer ${
+                className={`px-3 py-2 rounded-xl transition-all whitespace-nowrap cursor-pointer ${
                   statusFilter === f.id
                     ? 'bg-[var(--primary)] text-[var(--primary-foreground)] shadow-xs font-black'
                     : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] font-semibold'
@@ -109,8 +271,8 @@ export const KitchenDisplaySystem: React.FC = () => {
           </div>
 
           <button
-            onClick={fetchOrders}
-            className="p-3 rounded-2xl bg-[var(--card)] text-[var(--card-foreground)] border border-[var(--border)] hover:bg-[var(--muted)] transition-colors shadow-xs cursor-pointer"
+            onClick={() => fetchOrders(false)}
+            className="p-2.5 rounded-2xl bg-[var(--card)] text-[var(--card-foreground)] border border-[var(--border)] hover:bg-[var(--muted)] transition-colors shadow-xs cursor-pointer"
             title="Refresh Queue"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-amber-500' : ''}`} />
