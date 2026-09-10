@@ -19,6 +19,8 @@ services:
         generateValue: true
       - key: CORS_ORIGIN
         value: "*"
+      - key: DATABASE_URL
+        sync: false
       - key: SARVAM_API_KEY
         sync: false
       - key: RAZORPAY_KEY_ID

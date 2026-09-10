@@ -30,7 +30,14 @@ export function getApiBaseUrl(): string {
     }
   }
   const envUrl = (((import.meta as any).env?.VITE_API_BASE_URL as string) || '').replace(/\/+$/, '');
-  return envUrl.endsWith('/api') ? envUrl.slice(0, -4) : envUrl;
+  if (envUrl) {
+    return envUrl.endsWith('/api') ? envUrl.slice(0, -4) : envUrl;
+  }
+  // Production default for Cloudflare Pages deployments
+  if (typeof window !== 'undefined' && (window.location.hostname.endsWith('pages.dev') || window.location.hostname.includes('cloudflare'))) {
+    return 'https://loka-fstack.onrender.com';
+  }
+  return '';
 }
 
 export function setApiBaseUrl(url: string): void {
