@@ -21,8 +21,39 @@ import {
   VoiceTranscribeResponse
 } from '../types/api';
 
-const RAW_BASE_URL = (((import.meta as any).env?.VITE_API_BASE_URL as string) || '').replace(/\/+$/, '');
-const BASE_URL = RAW_BASE_URL.endsWith('/api') ? RAW_BASE_URL.slice(0, -4) : RAW_BASE_URL;
+export function getApiBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    const override = localStorage.getItem('loka_backend_url');
+    if (override && override.trim()) {
+      const clean = override.trim().replace(/\/+$/, '');
+      return clean.endsWith('/api') ? clean.slice(0, -4) : clean;
+    }
+  }
+  const envUrl = (((import.meta as any).env?.VITE_API_BASE_URL as string) || '').replace(/\/+$/, '');
+  return envUrl.endsWith('/api') ? envUrl.slice(0, -4) : envUrl;
+}
+
+export function setApiBaseUrl(url: string): void {
+  if (typeof window !== 'undefined') {
+    if (url && url.trim()) {
+      const clean = url.trim().replace(/\/+$/, '');
+      localStorage.setItem('loka_backend_url', clean);
+    } else {
+      localStorage.removeItem('loka_backend_url');
+    }
+  }
+}
+
+export function isBackendConfigured(): boolean {
+  const url = getApiBaseUrl();
+  if (url && url.length > 0) return true;
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    // Localhost has relative backend proxy
+    return host === 'localhost' || host === '127.0.0.1';
+  }
+  return false;
+}
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem('loka_auth_token');
@@ -35,13 +66,24 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
-    ...options,
-    headers
-  });
+  const baseUrl = getApiBaseUrl();
+  const fullUrl = `${baseUrl}${endpoint}`;
+
+  let res: Response;
+  try {
+    res = await fetch(fullUrl, {
+      ...options,
+      headers
+    });
+  } catch (netErr: any) {
+    throw new Error(`Network Error: Cannot reach API at ${baseUrl || window.location.origin}. Please ensure your backend is awake.`);
+  }
 
   if (!res.ok) {
     let errorMsg = `HTTP ${res.status}: ${res.statusText}`;
+    if (res.status === 405) {
+      errorMsg = `HTTP 405: The frontend is deployed on Cloudflare Pages, but VITE_API_BASE_URL is not set to your Render backend API. Please configure your Render URL or connect it in the login screen.`;
+    }
     try {
       const errorJson = await res.json();
       if (errorJson.error) errorMsg = errorJson.error;

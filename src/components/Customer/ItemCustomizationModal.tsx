@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Plus, Minus, Check, Sparkles, SlidersHorizontal, CheckCircle2 } from 'lucide-react';
+import { X, Plus, Minus, Check, Sparkles, SlidersHorizontal, CheckCircle2, Volume2, VolumeX, Coffee } from 'lucide-react';
 
 export const ItemCustomizationModal: React.FC = () => {
   const {
     selectedItemForCustomization,
     setSelectedItemForCustomization,
-    addToCart
+    addToCart,
+    showToast
   } = useApp();
 
   const item = selectedItemForCustomization;
@@ -18,6 +19,7 @@ export const ItemCustomizationModal: React.FC = () => {
   const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
   const [notes, setNotes] = useState<string>('');
   const [qty, setQty] = useState<number>(1);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
 
   useEffect(() => {
     if (item) {
@@ -37,8 +39,44 @@ export const ItemCustomizationModal: React.FC = () => {
       setSelectedExtras([]);
       setNotes('');
       setQty(1);
+      setIsPlayingAudio(false);
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
     }
   }, [item]);
+
+  // Clean up audio on unmount
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  const toggleAudioStory = () => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      showToast('Speech audio is not supported in this browser.');
+      return;
+    }
+
+    if (isPlayingAudio) {
+      window.speechSynthesis.cancel();
+      setIsPlayingAudio(false);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const storyText = `${item?.name}. ${item?.description || ''}. Crafted by our artisan baristas. Rich aroma with notes of roasted cacao and balanced sweetness. Pairs beautifully with our warm bakery selections. Enjoy!`;
+    const utterance = new SpeechSynthesisUtterance(storyText);
+    utterance.rate = 0.95;
+    utterance.pitch = 1.0;
+    utterance.onend = () => setIsPlayingAudio(false);
+    utterance.onerror = () => setIsPlayingAudio(false);
+    setIsPlayingAudio(true);
+    window.speechSynthesis.speak(utterance);
+  };
 
   if (!item) return null;
 
@@ -119,9 +157,39 @@ export const ItemCustomizationModal: React.FC = () => {
 
         {/* Customization Options Body */}
         <div className="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1 divide-y divide-[var(--border)]">
+          {/* Audio Barista Storyteller Card */}
+          <div className="flex items-center justify-between bg-gradient-to-r from-amber-500/10 via-[var(--primary)]/10 to-orange-500/10 p-3.5 rounded-2xl border border-amber-500/25">
+            <div className="flex items-center gap-2.5">
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center shadow-xs"
+                style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }}
+              >
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-xs font-bold text-[var(--foreground)] flex items-center gap-1.5">
+                  <span>Audio Barista Story</span>
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 uppercase font-black tracking-wider">
+                    Sarvam AI
+                  </span>
+                </div>
+                <p className="text-[10px] text-[var(--muted-foreground)]">Tasting notes, aroma profile & pairings</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={toggleAudioStory}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+              style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }}
+            >
+              {isPlayingAudio ? <VolumeX className="w-3.5 h-3.5 animate-pulse" /> : <Volume2 className="w-3.5 h-3.5" />}
+              <span>{isPlayingAudio ? 'Stop' : 'Listen'}</span>
+            </button>
+          </div>
+
           {/* Size selection */}
           {item.sizes && item.sizes.length > 0 && (
-            <div className="pt-2 first:pt-0">
+            <div className="pt-4">
               <label className="block text-xs font-black uppercase tracking-wider text-[var(--muted-foreground)] mb-2.5">
                 Cup / Serving Size
               </label>
